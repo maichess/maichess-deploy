@@ -1,0 +1,73 @@
+services:
+    watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      --interval 60
+      --label-enable
+      --cleanup
+
+  postgres:
+    image: postgres:16
+    container_name: maichess-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - db_network
+
+  mongo:
+    image: mongo:7
+    container_name: maichess-mongo
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+    networks:
+      - db_network
+
+  user-service:
+    image: ghcr.io/maichess/maichess-user-service:${USER_SERVICE_TAG:-main}
+    container_name: maichess-user-service
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_SECRET}
+    ports:
+      - "10101:8080"
+      - "10102:8081"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+volumes:
+  postgres_data:
+  mongo_data:
+
+networks:
+  db_network:
+    name: db_network
+    driver: bridge
+  services_network:
+    name: services_network
+    driver: bridge
