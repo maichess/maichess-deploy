@@ -61,6 +61,30 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 
+  auth-service:
+    image: ghcr.io/maichess/maichess-auth-service:${AUTH_SERVICE_TAG:-main}
+    container_name: maichess-auth-service
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - user-service
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      USER_SERVICE_GRPC_ADDR: user-service:8081
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+    ports:
+      - "10111:3000"
+      - "10112:50051"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
 volumes:
   postgres_data:
   mongo_data:
