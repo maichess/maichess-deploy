@@ -85,6 +85,20 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 
+  move-validator-service:
+    image: ghcr.io/maichess/maichess-move-validator-service:${MOVE_VALIDATOR_SERVICE_TAG:-main}
+    container_name: maichess-move-validator-service
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50055
+    ports:
+      - "10121:50055"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
 volumes:
   postgres_data:
   mongo_data:
