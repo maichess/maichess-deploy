@@ -1,14 +1,14 @@
 services:
-    watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: >
-      --interval 60
-      --label-enable
-      --cleanup
+  watchtower:
+  image: containrrr/watchtower
+  container_name: watchtower
+  restart: unless-stopped
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  command: >
+    --interval 60
+    --label-enable
+    --cleanup
 
   postgres:
     image: postgres:16
@@ -60,14 +60,14 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
-volumes:
-  postgres_data:
-  mongo_data:
+  volumes:
+    postgres_data:
+    mongo_data:
 
-networks:
-  db_network:
-    name: db_network
-    driver: bridge
-  services_network:
-    name: services_network
-    driver: bridge
+  networks:
+    db_network:
+      name: db_network
+      driver: bridge
+    services_network:
+      name: services_network
+      driver: bridge
