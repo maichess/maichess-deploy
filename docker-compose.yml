@@ -92,7 +92,21 @@ services:
     environment:
       GRPC_PORT: 50055
     ports:
-      - "10121:50055"
+      - "10122:50055"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
+  engine-service:
+    image: ghcr.io/maichess/maichess-engine-service:${ENGINE_SERVICE_TAG:-main}
+    container_name: maichess-engine-service
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50056
+    ports:
+      - "10132:50056"
     networks:
       - services_network
     labels:
