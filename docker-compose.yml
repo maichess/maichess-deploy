@@ -129,6 +129,7 @@ services:
 volumes:
   postgres_data:
   mongo_data:
+  redis_data:
 
 networks:
   db_network:
