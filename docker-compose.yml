@@ -156,7 +156,7 @@ services:
       - user-service
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Mongo: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
+      ConnectionStrings__MongoDB: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
       Services__MoveValidatorService: "http://move-validator-service:50055"
       Services__EngineService: "http://engine-service:50056"
       Services__UserService: "http://user-service:8081"
