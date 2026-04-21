@@ -97,7 +97,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
-
   move-validator-service:
     image: ghcr.io/maichess/maichess-move-validator-service:${MOVE_VALIDATOR_SERVICE_TAG:-main}
     container_name: maichess-move-validator-service
@@ -121,6 +120,26 @@ services:
     ports:
       - "10132:50056"
     networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
+  match-maker-service:
+    image: ghcr.io/maichess/maichess-match-maker-service:${MATCH_MAKER_SERVICE_TAG:-main}
+    container_name: maichess-match-maker-service
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
+      MatchManager__Url: match-manager-service:8080
+      Jwt__Key: ${JWT_SECRET}
+    ports:
+      - "10141:8080"
+    networks:
+      - db_network
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
