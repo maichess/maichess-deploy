@@ -134,10 +134,36 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
-      MatchManager__Url: "http://match-manager-service:8080"
+      MatchManager__Url: "http://match-manager-service:8081"
       Jwt__Key: ${JWT_SECRET}
     ports:
       - "10141:8080"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
+  match-manager-service:
+    image: ghcr.io/maichess/maichess-match-manager-service:${MATCH_MANAGER_SERVICE_TAG:-main}
+    container_name: maichess-match-manager-service
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - move-validator-service
+      - engine-service
+      - user-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Mongo: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
+      Services__MoveValidatorService: "http://move-validator-service:50055"
+      Services__EngineService: "http://engine-service:50056"
+      Services__UserService: "http://user-service:8081"
+      Jwt__Key: ${JWT_SECRET}
+    ports:
+      - "10151:8080"
+      - "10152:8081"
     networks:
       - db_network
       - services_network
