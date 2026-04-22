@@ -171,6 +171,28 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 
+  client:
+    image: ghcr.io/maichess/maichess-client:${CLIENT_TAG:-main}
+    container_name: maichess-client
+    restart: unless-stopped
+    depends_on:
+      - auth-service
+      - user-service
+      - match-maker-service
+      - match-manager-service
+    environment:
+      AUTH_SERVICE_URL: "http://auth-service:3000"
+      USER_SERVICE_URL: "http://user-service:8080"
+      MATCH_MAKER_URL: "http://match-maker-service:8080"
+      MATCH_MANAGER_URL: "http://match-manager-service:8080"
+    ports:
+      - "10161:3000"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
 volumes:
   postgres_data:
   mongo_data:
