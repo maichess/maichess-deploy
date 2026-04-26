@@ -54,21 +54,71 @@ services:
     networks:
       - db_network
 
-  user-service:
-    image: ghcr.io/maichess/maichess-user-service:${USER_SERVICE_TAG:-main}
-    container_name: maichess-user-service
+  user-db:
+    image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
+    container_name: maichess-user-db
     restart: unless-stopped
     depends_on:
       - postgres
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Database__Adapter: postgres
+      Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Database__ReadOnly: "false"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  user-db-ro:
+    image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
+    container_name: maichess-user-db-ro
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Adapter: postgres
+      Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Database__ReadOnly: "true"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  match-db:
+    image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
+    container_name: maichess-match-db
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Adapter: mongo
+      Database__ConnectionString: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
+      Database__ReadOnly: "false"
+    networks:
+      - db_network
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  user-service:
+    image: ghcr.io/maichess/maichess-user-service:${USER_SERVICE_TAG:-main}
+    container_name: maichess-user-service
+    restart: unless-stopped
+    depends_on:
+      - user-db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Services__DatabaseService: "http://user-db:8080"
       Jwt__Key: ${JWT_SECRET}
     ports:
       - "10101:8080"
       - "10102:8081"
     networks:
-      - db_network
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
@@ -79,14 +129,16 @@ services:
     container_name: maichess-auth-service
     restart: unless-stopped
     depends_on:
-      - postgres
+      - redis
+      - user-db-ro
       - user-service
     env_file: .env
     environment:
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
       USER_SERVICE_GRPC_ADDR: user-service:8081
+      USER_DB_SERVICE_GRPC_ADDR: user-db-ro:8080
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
     ports:
       - "10111:3000"
@@ -150,13 +202,13 @@ services:
     container_name: maichess-match-manager-service
     restart: unless-stopped
     depends_on:
-      - mongo
+      - match-db
       - move-validator-service
       - engine-service
       - user-service
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__MongoDB: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
+      Services__DatabaseService: "http://match-db:8080"
       Services__MoveValidatorService: "http://move-validator-service:50055"
       Services__EngineService: "http://engine-service:50056"
       Services__UserService: "http://user-service:8081"
@@ -165,7 +217,6 @@ services:
       - "10151:8080"
       - "10152:8081"
     networks:
-      - db_network
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
