@@ -3,6 +3,7 @@ services:
     image: otel/opentelemetry-collector-contrib:0.123.0
     container_name: maichess-otel-collector
     restart: unless-stopped
+    user: "0:0"
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
