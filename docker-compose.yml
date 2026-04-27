@@ -177,6 +177,25 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 
+  socket-service:
+    image: ghcr.io/maichess/maichess-socket-service:${SOCKET_SERVICE_TAG:-main}
+    container_name: maichess-socket-service
+    restart: unless-stopped
+    depends_on:
+      - auth-service
+    environment:
+      NODE_ENV: production
+      AUTH_SERVICE_GRPC_ADDR: "auth-service:50051"
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "10171:3000"
+      - "10172:50051"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
   match-maker-service:
     image: ghcr.io/maichess/maichess-match-maker-service:${MATCH_MAKER_SERVICE_TAG:-main}
     container_name: maichess-match-maker-service
@@ -184,11 +203,13 @@ services:
     depends_on:
       - redis
       - engine-service
+      - socket-service
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
       MatchManager__Url: "http://match-manager-service:8081"
       Engine__Url: "http://engine-service:50056"
+      Services__SocketService: "http://socket-service:50051"
       Jwt__Key: ${JWT_SECRET}
     ports:
       - "10141:8080"
@@ -208,12 +229,14 @@ services:
       - move-validator-service
       - engine-service
       - user-service
+      - socket-service
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Services__DatabaseService: "http://match-db:8080"
       Services__MoveValidatorService: "http://move-validator-service:50055"
       Services__EngineService: "http://engine-service:50056"
       Services__UserService: "http://user-service:8081"
+      Services__SocketService: "http://socket-service:50051"
       Jwt__Key: ${JWT_SECRET}
     ports:
       - "10151:8080"
@@ -233,11 +256,13 @@ services:
       - user-service
       - match-maker-service
       - match-manager-service
+      - socket-service
     environment:
       AUTH_SERVICE_URL: "http://auth-service:3000"
       USER_SERVICE_URL: "http://user-service:8080"
       MATCH_MAKER_URL: "http://match-maker-service:8080"
       MATCH_MANAGER_URL: "http://match-manager-service:8080"
+      # NEXT_PUBLIC_SOCKET_URL must be set at image build time — set this to the externally reachable socket-service URL
     ports:
       - "10161:3000"
     networks:
