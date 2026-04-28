@@ -333,6 +333,22 @@ services:
       - services_network
 
 
+  topology-client:
+    image: ghcr.io/maichess/maichess-topology-client:${TOPOLOGY_CLIENT_TAG:-main}
+    container_name: maichess-topology-client
+    restart: unless-stopped
+    depends_on:
+      - topology-service
+    environment:
+      NEXT_PUBLIC_TOPOLOGY_WS_URL: ${TOPOLOGY_WS_URL:-wss://api.topology.maichess.berger-software.com/ws}
+    ports:
+      - "10182:3000"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
   client:
     image: ghcr.io/maichess/maichess-client:${CLIENT_TAG:-main}
     container_name: maichess-client
