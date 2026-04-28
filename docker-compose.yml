@@ -316,6 +316,23 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
 
+  topology-service:
+    image: ghcr.io/maichess/maichess-topology-service:${TOPOLOGY_SERVICE:-main}
+    container_name: maichess-topology-service
+    restart: unless-stopped
+    depends_on:
+      - otel-collector
+    environment:
+      NODE_ENV: production
+      SPANS_FILE: /var/log/otel/spans.jsonl
+    volumes:
+      - otel_spans:/var/log/otel
+    ports:
+      - "10181:3001"
+    networks:
+      - services_network
+
+
   client:
     image: ghcr.io/maichess/maichess-client:${CLIENT_TAG:-main}
     container_name: maichess-client
