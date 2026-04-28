@@ -327,6 +327,7 @@ services:
       SPANS_FILE: /var/log/otel/spans.jsonl
     volumes:
       - otel_spans:/var/log/otel
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "10181:3001"
     networks:
