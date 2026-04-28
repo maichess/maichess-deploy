@@ -1,4 +1,27 @@
 services:
+  traefik:
+    image: traefik:v3.3
+    container_name: maichess-traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - services_network
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0
     container_name: maichess-otel-collector
@@ -33,15 +56,20 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: "https://grafana.maichess.berger-software.com"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
-    ports:
-      - "127.0.0.1:10180:3000"
     networks:
       - services_network
     depends_on:
       - tempo
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.maichess.berger-software.com`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   watchtower:
     image: ghcr.io/nicholas-fedor/watchtower:latest
@@ -170,14 +198,15 @@ services:
       Services__DatabaseService: "http://user-db:8080"
       Jwt__Key: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10101:8080"
-      - "10102:8081"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=Host(`users.maichess.berger-software.com`)"
+      - "traefik.http.routers.users.entrypoints=websecure"
+      - "traefik.http.routers.users.tls.certresolver=letsencrypt"
+      - "traefik.http.services.users.loadbalancer.server.port=8080"
 
   auth-service:
     image: ghcr.io/maichess/maichess-auth-service:${AUTH_SERVICE_TAG:-main}
@@ -197,14 +226,16 @@ services:
       USER_DB_SERVICE_GRPC_ADDR: user-db-ro:8080
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10111:3000"
-      - "10112:50051"
     networks:
       - db_network
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.maichess.berger-software.com`)"
+      - "traefik.http.routers.auth.entrypoints=websecure"
+      - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.auth.loadbalancer.server.port=3000"
 
   move-validator-service:
     image: ghcr.io/maichess/maichess-move-validator-service:${MOVE_VALIDATOR_SERVICE_TAG:-main}
@@ -215,13 +246,10 @@ services:
     environment:
       GRPC_PORT: 50055
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10122:50055"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
 
   engine-service:
     image: ghcr.io/maichess/maichess-engine-service:${ENGINE_SERVICE_TAG:-main}
@@ -232,13 +260,10 @@ services:
     environment:
       GRPC_PORT: 50056
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10132:50056"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
 
   socket-service:
     image: ghcr.io/maichess/maichess-socket-service:${SOCKET_SERVICE_TAG:-main}
@@ -252,14 +277,15 @@ services:
       AUTH_SERVICE_GRPC_ADDR: "auth-service:50051"
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10171:3000"
-      - "10172:50051"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.sockets.rule=Host(`sockets.maichess.berger-software.com`)"
+      - "traefik.http.routers.sockets.entrypoints=websecure"
+      - "traefik.http.routers.sockets.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sockets.loadbalancer.server.port=3000"
 
   match-maker-service:
     image: ghcr.io/maichess/maichess-match-maker-service:${MATCH_MAKER_SERVICE_TAG:-main}
@@ -278,14 +304,16 @@ services:
       Services__SocketService: "http://socket-service:50051"
       Jwt__Key: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10141:8080"
     networks:
       - db_network
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.matchmaker.rule=Host(`matchmaker.maichess.berger-software.com`)"
+      - "traefik.http.routers.matchmaker.entrypoints=websecure"
+      - "traefik.http.routers.matchmaker.tls.certresolver=letsencrypt"
+      - "traefik.http.services.matchmaker.loadbalancer.server.port=8080"
 
   match-manager-service:
     image: ghcr.io/maichess/maichess-match-manager-service:${MATCH_MANAGER_SERVICE_TAG:-main}
@@ -307,14 +335,15 @@ services:
       Services__SocketService: "http://socket-service:50051"
       Jwt__Key: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-    ports:
-      - "10151:8080"
-      - "10152:8081"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.matchmanager.rule=Host(`matchmanager.maichess.berger-software.com`)"
+      - "traefik.http.routers.matchmanager.entrypoints=websecure"
+      - "traefik.http.routers.matchmanager.tls.certresolver=letsencrypt"
+      - "traefik.http.services.matchmanager.loadbalancer.server.port=8080"
 
   topology-service:
     image: ghcr.io/maichess/maichess-topology-service:${TOPOLOGY_SERVICE:-main}
@@ -328,13 +357,15 @@ services:
     volumes:
       - otel_spans:/var/log/otel
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - "10181:3001"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.topology-api.rule=Host(`api.topology.maichess.berger-software.com`)"
+      - "traefik.http.routers.topology-api.entrypoints=websecure"
+      - "traefik.http.routers.topology-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.topology-api.loadbalancer.server.port=3001"
 
   topology-client:
     image: ghcr.io/maichess/maichess-topology-client:${TOPOLOGY_CLIENT_TAG:-main}
@@ -344,13 +375,15 @@ services:
       - topology-service
     environment:
       NEXT_PUBLIC_TOPOLOGY_WS_URL: ${TOPOLOGY_WS_URL:-wss://api.topology.maichess.berger-software.com/ws}
-    ports:
-      - "10182:3000"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-
+      - "traefik.enable=true"
+      - "traefik.http.routers.topology.rule=Host(`topology.maichess.berger-software.com`)"
+      - "traefik.http.routers.topology.entrypoints=websecure"
+      - "traefik.http.routers.topology.tls.certresolver=letsencrypt"
+      - "traefik.http.services.topology.loadbalancer.server.port=3000"
 
   client:
     image: ghcr.io/maichess/maichess-client:${CLIENT_TAG:-main}
@@ -368,12 +401,15 @@ services:
       MATCH_MAKER_URL: "http://match-maker-service:8080"
       MATCH_MANAGER_URL: "http://match-manager-service:8080"
       # NEXT_PUBLIC_SOCKET_URL must be set at image build time — set this to the externally reachable socket-service URL
-    ports:
-      - "10161:3000"
     networks:
       - services_network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=Host(`maichess.berger-software.com`)"
+      - "traefik.http.routers.client.entrypoints=websecure"
+      - "traefik.http.routers.client.tls.certresolver=letsencrypt"
+      - "traefik.http.services.client.loadbalancer.server.port=3000"
 
 
 volumes:
@@ -383,6 +419,7 @@ volumes:
   tempo_data:
   grafana_data:
   otel_spans:
+  letsencrypt:
 
 networks:
   db_network:
