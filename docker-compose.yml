@@ -331,6 +331,8 @@ services:
       - "10181:3001"
     networks:
       - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 
   topology-client:
