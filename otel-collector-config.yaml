@@ -19,6 +19,19 @@ exporters:
       max_days: 1
       max_backups: 3
 
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+connectors:
+  servicegraph:
+    store:
+      ttl: 2s
+      max_items: 1000
+    virtual_node_peer_attributes:
+      - net.peer.name
+      - server.address
+      - rpc.service
+
 processors:
   batch:
     timeout: 5s
@@ -29,4 +42,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp, file]
+      exporters: [otlp, file, servicegraph]
+    metrics/servicegraph:
+      receivers: [servicegraph]
+      exporters: [prometheus]
