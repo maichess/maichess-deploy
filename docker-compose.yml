@@ -430,6 +430,7 @@ services:
       USER_SERVICE_URL: "http://user-service:8080"
       MATCH_MAKER_URL: "http://match-maker-service:8080"
       MATCH_MANAGER_URL: "http://match-manager-service:8080"
+      ANALYSIS_SERVICE_URL: "http://analysis-service:8080"
       # NEXT_PUBLIC_SOCKET_URL must be set at image build time — set this to the externally reachable socket-service URL
     networks:
       - services_network
