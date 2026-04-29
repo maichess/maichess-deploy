@@ -345,6 +345,36 @@ services:
       - "traefik.http.routers.matchmanager.tls.certresolver=letsencrypt"
       - "traefik.http.services.matchmanager.loadbalancer.server.port=8080"
 
+  analysis-service:
+    image: ghcr.io/maichess/maichess-analysis-service:${ANALYSIS_SERVICE_TAG:-main}
+    container_name: maichess-analysis-service
+    restart: unless-stopped
+    depends_on:
+      - match-db
+      - engine-service
+      - move-validator-service
+      - socket-service
+      - otel-collector
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Services__DatabaseService: "http://match-db:8080"
+      Services__EngineService: "http://engine-service:50056"
+      Services__MoveValidatorService: "http://move-validator-service:50055"
+      Services__SocketService: "http://socket-service:50051"
+      Jwt__Key: ${JWT_SECRET}
+      Analysis__DefaultBotId: "blitz"
+      Analysis__DefaultLineCount: "3"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    networks:
+      - services_network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.analysis.rule=Host(`analysis.maichess.berger-software.com`)"
+      - "traefik.http.routers.analysis.entrypoints=websecure"
+      - "traefik.http.routers.analysis.tls.certresolver=letsencrypt"
+      - "traefik.http.services.analysis.loadbalancer.server.port=8080"
+
   topology-service:
     image: ghcr.io/maichess/maichess-topology-service:${TOPOLOGY_SERVICE:-main}
     container_name: maichess-topology-service
