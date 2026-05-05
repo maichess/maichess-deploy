@@ -1,0 +1,149 @@
+# Staging override — merge with base: docker compose -f docker-compose.yml -f docker-compose.staging.yml
+#
+# Changes from production:
+#   - All public domains prefixed with "staging."
+#   - Let's Encrypt staging CA (avoids rate limits)
+#   - Container names prefixed with "staging-" (safe to run alongside prod)
+#   - No persistent volumes: run-staging.sh always does `down -v` before `up`
+
+services:
+  traefik:
+    container_name: staging-maichess-traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+
+  otel-collector:
+    container_name: staging-maichess-otel-collector
+
+  tempo:
+    container_name: staging-maichess-tempo
+
+  grafana:
+    container_name: staging-maichess-grafana
+    environment:
+      GF_SERVER_ROOT_URL: "https://staging.grafana.maichess.berger-software.com"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`staging.grafana.maichess.berger-software.com`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  watchtower:
+    container_name: staging-watchtower
+
+  redis:
+    container_name: staging-maichess-redis
+
+  postgres:
+    container_name: staging-maichess-postgres
+
+  mongo:
+    container_name: staging-maichess-mongo
+
+  user-db:
+    container_name: staging-maichess-user-db
+
+  user-db-ro:
+    container_name: staging-maichess-user-db-ro
+
+  match-db:
+    container_name: staging-maichess-match-db
+
+  user-service:
+    container_name: staging-maichess-user-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=Host(`staging.users.maichess.berger-software.com`)"
+      - "traefik.http.routers.users.entrypoints=websecure"
+      - "traefik.http.routers.users.tls.certresolver=letsencrypt"
+      - "traefik.http.services.users.loadbalancer.server.port=8080"
+
+  auth-service:
+    container_name: staging-maichess-auth-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`staging.auth.maichess.berger-software.com`)"
+      - "traefik.http.routers.auth.entrypoints=websecure"
+      - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.auth.loadbalancer.server.port=3000"
+
+  move-validator-service:
+    container_name: staging-maichess-move-validator-service
+
+  engine-service:
+    container_name: staging-maichess-engine-service
+
+  socket-service:
+    container_name: staging-maichess-socket-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sockets.rule=Host(`staging.sockets.maichess.berger-software.com`)"
+      - "traefik.http.routers.sockets.entrypoints=websecure"
+      - "traefik.http.routers.sockets.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sockets.loadbalancer.server.port=3000"
+
+  match-maker-service:
+    container_name: staging-maichess-match-maker-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matchmaker.rule=Host(`staging.matchmaker.maichess.berger-software.com`)"
+      - "traefik.http.routers.matchmaker.entrypoints=websecure"
+      - "traefik.http.routers.matchmaker.tls.certresolver=letsencrypt"
+      - "traefik.http.services.matchmaker.loadbalancer.server.port=8080"
+
+  match-manager-service:
+    container_name: staging-maichess-match-manager-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matchmanager.rule=Host(`staging.matchmanager.maichess.berger-software.com`)"
+      - "traefik.http.routers.matchmanager.entrypoints=websecure"
+      - "traefik.http.routers.matchmanager.tls.certresolver=letsencrypt"
+      - "traefik.http.services.matchmanager.loadbalancer.server.port=8080"
+
+  analysis-service:
+    container_name: staging-maichess-analysis-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analysis.rule=Host(`staging.analysis.maichess.berger-software.com`)"
+      - "traefik.http.routers.analysis.entrypoints=websecure"
+      - "traefik.http.routers.analysis.tls.certresolver=letsencrypt"
+      - "traefik.http.services.analysis.loadbalancer.server.port=8080"
+
+  topology-service:
+    container_name: staging-maichess-topology-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.topology-api.rule=Host(`staging.api.topology.maichess.berger-software.com`)"
+      - "traefik.http.routers.topology-api.entrypoints=websecure"
+      - "traefik.http.routers.topology-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.topology-api.loadbalancer.server.port=3001"
+
+  topology-client:
+    container_name: staging-maichess-topology-client
+    environment:
+      NEXT_PUBLIC_TOPOLOGY_WS_URL: "wss://staging.api.topology.maichess.berger-software.com/ws"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.topology.rule=Host(`staging.topology.maichess.berger-software.com`)"
+      - "traefik.http.routers.topology.entrypoints=websecure"
+      - "traefik.http.routers.topology.tls.certresolver=letsencrypt"
+      - "traefik.http.services.topology.loadbalancer.server.port=3000"
+
+  client:
+    container_name: staging-maichess-client
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=Host(`staging.maichess.berger-software.com`)"
+      - "traefik.http.routers.client.entrypoints=websecure"
+      - "traefik.http.routers.client.tls.certresolver=letsencrypt"
+      - "traefik.http.services.client.loadbalancer.server.port=3000"
