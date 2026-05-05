@@ -29,6 +29,15 @@ services:
     networks:
       - traefik
 
+    sysctls:
+      - net.core.somaxconn=4096
+      - net.ipv4.tcp_max_syn_backlog=4096
+
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
 volumes:
   letsencrypt:
 
