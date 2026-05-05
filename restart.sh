@@ -1,5 +1,5 @@
 #!/bin/sh
 
 git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --pull always
+docker compose down
+docker compose up -d --pull always

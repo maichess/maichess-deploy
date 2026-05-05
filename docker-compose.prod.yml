@@ -1,9 +1,0 @@
-# Prod-only additions — merge with base: docker compose -f docker-compose.yml -f docker-compose.prod.yml
-# Kept separate so staging Traefik never inherits host port bindings
-# (Docker Compose merges ports additively; you can't remove them via override).
-
-services:
-  traefik:
-    ports:
-      - "80:80"
-      - "443:443"
