@@ -7,7 +7,7 @@
 tcp:
   routers:
     staging-passthrough:
-      rule: "HostSNI(`staging.maichess.berger-software.com`) || HostSNI(`*.staging.maichess.berger-software.com`)"
+      rule: "HostSNIRegexp(`^(.*\\.)?staging\\.maichess\\.berger-software\\.com$`)"
       entryPoints:
         - websecure
       service: staging-traefik
