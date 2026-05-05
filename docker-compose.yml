@@ -138,7 +138,6 @@ services:
       Database__Adapter: postgres
       Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Database__ReadOnly: "false"
-      Database__Migrations: "user"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
       OTEL_SERVICE_NAME: user-db
     networks:
@@ -179,7 +178,6 @@ services:
       Database__Adapter: mongo
       Database__ConnectionString: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
       Database__ReadOnly: "false"
-      Database__Migrations: "match"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
       OTEL_SERVICE_NAME: match-db
     networks:
