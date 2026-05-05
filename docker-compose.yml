@@ -1,3 +1,5 @@
+name: maichess
+
 services:
   traefik:
     image: traefik:v3.6
@@ -6,6 +8,9 @@ services:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.constraints=Label(`com.docker.compose.project`,`maichess`)"
+      - "--providers.file.filename=/etc/traefik/staging.yml"
+      - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
@@ -13,12 +18,10 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
+      - ./traefik-staging.yml:/etc/traefik/staging.yml:ro
     networks:
       - services_network
 
@@ -32,8 +35,8 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
       - otel_spans:/var/log/otel
     ports:
-      - "127.0.0.1:4317:4317"
-      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:${OTEL_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318"
     networks:
       - services_network
     depends_on:
@@ -91,7 +94,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     networks:
       - db_network
 
@@ -107,7 +110,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     networks:
       - db_network
 
@@ -122,7 +125,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "127.0.0.1:27017:27017"
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
     networks:
       - db_network
 

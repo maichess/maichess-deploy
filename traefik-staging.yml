@@ -1,0 +1,21 @@
+# Prod Traefik static config for staging SNI passthrough.
+# Loaded via the file provider — keeps staging routing out of the Docker label system
+# so staging Traefik never sees rules meant for prod Traefik.
+#
+# When staging is down, Traefik returns 503 for staging domains. That's expected.
+
+tcp:
+  routers:
+    staging-passthrough:
+      rule: "HostSNI(`staging.maichess.berger-software.com`) || HostSNI(`*.staging.maichess.berger-software.com`)"
+      entryPoints:
+        - websecure
+      service: staging-traefik
+      tls:
+        passthrough: true
+
+  services:
+    staging-traefik:
+      loadBalancer:
+        servers:
+          - address: "staging-maichess-traefik:443"

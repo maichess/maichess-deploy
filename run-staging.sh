@@ -4,8 +4,12 @@ set -euo pipefail
 # Staging environment runner
 # Uses project name "maichess-staging" to isolate all volumes and networks from production.
 # On every `up`, volumes are destroyed first to ensure no data persists between runs.
+#
+# Prerequisites:
+#   - Prod stack must be running first (staging Traefik joins prod's `services_network`)
+#   - DNS wildcard *.staging.maichess.berger-software.com must point to the server IP
 
-COMPOSE="docker compose -f docker-compose.yml -f docker-compose.staging.yml -p maichess-staging"
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env --env-file .env.staging -p maichess-staging"
 
 usage() {
   echo "Usage: $0 [up|down|logs|pull|<any docker compose subcommand>]"
@@ -24,17 +28,17 @@ case "${1:-up}" in
     echo "==> Starting staging stack..."
     $COMPOSE up -d --pull always
     echo ""
-    echo "Staging environment is up. Public endpoints:"
+    echo "Staging environment is up. Public endpoints (routed via prod Traefik SNI passthrough):"
     echo "  https://staging.maichess.berger-software.com"
-    echo "  https://staging.auth.maichess.berger-software.com"
-    echo "  https://staging.users.maichess.berger-software.com"
-    echo "  https://staging.sockets.maichess.berger-software.com"
-    echo "  https://staging.matchmaker.maichess.berger-software.com"
-    echo "  https://staging.matchmanager.maichess.berger-software.com"
-    echo "  https://staging.analysis.maichess.berger-software.com"
-    echo "  https://staging.grafana.maichess.berger-software.com"
-    echo "  https://staging.topology.maichess.berger-software.com"
-    echo "  https://staging.api.topology.maichess.berger-software.com"
+    echo "  https://auth.staging.maichess.berger-software.com"
+    echo "  https://users.staging.maichess.berger-software.com"
+    echo "  https://sockets.staging.maichess.berger-software.com"
+    echo "  https://matchmaker.staging.maichess.berger-software.com"
+    echo "  https://matchmanager.staging.maichess.berger-software.com"
+    echo "  https://analysis.staging.maichess.berger-software.com"
+    echo "  https://grafana.staging.maichess.berger-software.com"
+    echo "  https://topology.staging.maichess.berger-software.com"
+    echo "  https://api.topology.staging.maichess.berger-software.com"
     ;;
   down)
     echo "==> Stopping staging stack and removing volumes..."
