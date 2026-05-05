@@ -1,0 +1,39 @@
+# Staging overlay — removes all persistent volumes so every container runs ephemeral.
+# Apply with:
+#   docker compose -p maichess-staging --env-file .env.staging \
+#     -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+services:
+  postgres:
+    volumes: []
+
+  mongo:
+    volumes: []
+
+  redis:
+    volumes: []
+
+  tempo:
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+      # tempo_data removed — trace storage is ephemeral in staging
+
+  grafana:
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      # grafana_data removed — dashboard state is ephemeral in staging
+
+  prometheus:
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # prometheus_data removed — metrics storage is ephemeral in staging
+
+  otel-collector:
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+      # otel_spans named volume removed — spans log is ephemeral in staging
+
+  topology-service:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # otel_spans named volume removed — spans file is ephemeral in staging

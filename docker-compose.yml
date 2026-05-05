@@ -1,39 +1,12 @@
 services:
-  traefik:
-    image: traefik:v3.6
-    container_name: maichess-traefik
-    restart: unless-stopped
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
-    networks:
-      - services_network
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0
-    container_name: maichess-otel-collector
     restart: unless-stopped
     user: "0:0"
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
       - otel_spans:/var/log/otel
-    ports:
-      - "127.0.0.1:4317:4317"
-      - "127.0.0.1:4318:4318"
     networks:
       - services_network
     depends_on:
@@ -41,7 +14,6 @@ services:
 
   tempo:
     image: grafana/tempo:2.7.2
-    container_name: maichess-tempo
     restart: unless-stopped
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
@@ -52,28 +24,27 @@ services:
 
   grafana:
     image: grafana/grafana:11.6.0
-    container_name: maichess-grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_SERVER_ROOT_URL: "https://grafana.maichess.berger-software.com"
+      GF_SERVER_ROOT_URL: "https://${GRAFANA_DOMAIN}"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
     networks:
       - services_network
+      - traefik
     depends_on:
       - tempo
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.maichess.berger-software.com`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${ROUTER_PREFIX}-grafana.rule=Host(`${GRAFANA_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-grafana.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-grafana.loadbalancer.server.port=3000"
 
   prometheus:
     image: prom/prometheus:v3.3.1
-    container_name: maichess-prometheus
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -85,21 +56,21 @@ services:
       - prometheus_data:/prometheus
     networks:
       - services_network
+      - traefik
     depends_on:
       - otel-collector
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus-rw.rule=Host(`prometheus.maichess.berger-software.com`) && PathPrefix(`/api/v1/write`)"
-      - "traefik.http.routers.prometheus-rw.entrypoints=websecure"
-      - "traefik.http.routers.prometheus-rw.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.prometheus-rw.middlewares=prometheus-auth"
-      - "traefik.http.middlewares.prometheus-auth.basicauth.users=${PROMETHEUS_BASIC_AUTH_USERS}"
-      - "traefik.http.services.prometheus-rw.loadbalancer.server.port=9090"
+      - "traefik.http.routers.${ROUTER_PREFIX}-prometheus-rw.rule=Host(`${PROMETHEUS_DOMAIN}`) && PathPrefix(`/api/v1/write`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-prometheus-rw.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-prometheus-rw.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ROUTER_PREFIX}-prometheus-rw.middlewares=${ROUTER_PREFIX}-prometheus-auth"
+      - "traefik.http.middlewares.${ROUTER_PREFIX}-prometheus-auth.basicauth.users=${PROMETHEUS_BASIC_AUTH_USERS}"
+      - "traefik.http.services.${ROUTER_PREFIX}-prometheus-rw.loadbalancer.server.port=9090"
 
   watchtower:
     image: ghcr.io/nicholas-fedor/watchtower:latest
-    container_name: watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -110,20 +81,16 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: maichess-redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     env_file: .env
     volumes:
       - redis_data:/data
-    ports:
-      - "127.0.0.1:6379:6379"
     networks:
       - db_network
 
   postgres:
     image: postgres:16
-    container_name: maichess-postgres
     restart: unless-stopped
     env_file: .env
     environment:
@@ -132,14 +99,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"
     networks:
       - db_network
 
   mongo:
     image: mongo:7
-    container_name: maichess-mongo
     restart: unless-stopped
     env_file: .env
     environment:
@@ -147,20 +111,17 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - mongo_data:/data/db
-    ports:
-      - "127.0.0.1:27017:27017"
     networks:
       - db_network
 
   user-db:
     image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
-    container_name: maichess-user-db
     restart: unless-stopped
     depends_on:
       - postgres
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Database__Adapter: postgres
       Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Database__ReadOnly: "false"
@@ -175,13 +136,12 @@ services:
 
   user-db-ro:
     image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
-    container_name: maichess-user-db-ro
     restart: unless-stopped
     depends_on:
       - postgres
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Database__Adapter: postgres
       Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Database__ReadOnly: "true"
@@ -195,13 +155,12 @@ services:
 
   match-db:
     image: ghcr.io/maichess/maichess-database-service:${DATABASE_SERVICE_TAG:-main}
-    container_name: maichess-match-db
     restart: unless-stopped
     depends_on:
       - mongo
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Database__Adapter: mongo
       Database__ConnectionString: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017"
       Database__ReadOnly: "false"
@@ -216,29 +175,28 @@ services:
 
   user-service:
     image: ghcr.io/maichess/maichess-user-service:${USER_SERVICE_TAG:-main}
-    container_name: maichess-user-service
     restart: unless-stopped
     depends_on:
       - user-db
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Services__DatabaseService: "http://user-db:8080"
       Jwt__Key: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.users.rule=Host(`users.maichess.berger-software.com`)"
-      - "traefik.http.routers.users.entrypoints=websecure"
-      - "traefik.http.routers.users.tls.certresolver=letsencrypt"
-      - "traefik.http.services.users.loadbalancer.server.port=8080"
+      - "traefik.http.routers.${ROUTER_PREFIX}-users.rule=Host(`${USERS_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-users.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-users.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-users.loadbalancer.server.port=8080"
 
   auth-service:
     image: ghcr.io/maichess/maichess-auth-service:${AUTH_SERVICE_TAG:-main}
-    container_name: maichess-auth-service
     restart: unless-stopped
     depends_on:
       - redis
@@ -247,7 +205,7 @@ services:
       - otel-collector
     env_file: .env
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${ENVIRONMENT}
       JWT_SECRET: ${JWT_SECRET}
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
       USER_SERVICE_GRPC_ADDR: user-service:8081
@@ -257,17 +215,17 @@ services:
     networks:
       - db_network
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=Host(`auth.maichess.berger-software.com`)"
-      - "traefik.http.routers.auth.entrypoints=websecure"
-      - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
-      - "traefik.http.services.auth.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${ROUTER_PREFIX}-auth.rule=Host(`${AUTH_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-auth.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-auth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-auth.loadbalancer.server.port=3000"
 
   move-validator-service:
     image: ghcr.io/maichess/maichess-move-validator-service:${MOVE_VALIDATOR_SERVICE_TAG:-main}
-    container_name: maichess-move-validator-service
     restart: unless-stopped
     depends_on:
       - otel-collector
@@ -281,7 +239,6 @@ services:
 
   engine-service:
     image: ghcr.io/maichess/maichess-engine-service:${ENGINE_SERVICE_TAG:-main}
-    container_name: maichess-engine-service
     restart: unless-stopped
     depends_on:
       - otel-collector
@@ -295,29 +252,28 @@ services:
 
   socket-service:
     image: ghcr.io/maichess/maichess-socket-service:${SOCKET_SERVICE_TAG:-main}
-    container_name: maichess-socket-service
     restart: unless-stopped
     depends_on:
       - auth-service
       - otel-collector
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${ENVIRONMENT}
       AUTH_SERVICE_GRPC_ADDR: "auth-service:50051"
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.sockets.rule=Host(`sockets.maichess.berger-software.com`)"
-      - "traefik.http.routers.sockets.entrypoints=websecure"
-      - "traefik.http.routers.sockets.tls.certresolver=letsencrypt"
-      - "traefik.http.services.sockets.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${ROUTER_PREFIX}-sockets.rule=Host(`${SOCKETS_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-sockets.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-sockets.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-sockets.loadbalancer.server.port=3000"
 
   match-maker-service:
     image: ghcr.io/maichess/maichess-match-maker-service:${MATCH_MAKER_SERVICE_TAG:-main}
-    container_name: maichess-match-maker-service
     restart: unless-stopped
     depends_on:
       - redis
@@ -325,7 +281,7 @@ services:
       - socket-service
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
       MatchManager__Url: "http://match-manager-service:8081"
       Engine__Url: "http://engine-service:50056"
@@ -335,17 +291,17 @@ services:
     networks:
       - db_network
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.matchmaker.rule=Host(`matchmaker.maichess.berger-software.com`)"
-      - "traefik.http.routers.matchmaker.entrypoints=websecure"
-      - "traefik.http.routers.matchmaker.tls.certresolver=letsencrypt"
-      - "traefik.http.services.matchmaker.loadbalancer.server.port=8080"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmaker.rule=Host(`${MATCHMAKER_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmaker.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmaker.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-matchmaker.loadbalancer.server.port=8080"
 
   match-manager-service:
     image: ghcr.io/maichess/maichess-match-manager-service:${MATCH_MANAGER_SERVICE_TAG:-main}
-    container_name: maichess-match-manager-service
     restart: unless-stopped
     depends_on:
       - match-db
@@ -355,7 +311,7 @@ services:
       - socket-service
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Services__DatabaseService: "http://match-db:8080"
       Services__MoveValidatorService: "http://move-validator-service:50055"
       Services__EngineService: "http://engine-service:50056"
@@ -365,17 +321,17 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.matchmanager.rule=Host(`matchmanager.maichess.berger-software.com`)"
-      - "traefik.http.routers.matchmanager.entrypoints=websecure"
-      - "traefik.http.routers.matchmanager.tls.certresolver=letsencrypt"
-      - "traefik.http.services.matchmanager.loadbalancer.server.port=8080"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmanager.rule=Host(`${MATCHMANAGER_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmanager.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-matchmanager.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-matchmanager.loadbalancer.server.port=8080"
 
   analysis-service:
     image: ghcr.io/maichess/maichess-analysis-service:${ANALYSIS_SERVICE_TAG:-main}
-    container_name: maichess-analysis-service
     restart: unless-stopped
     depends_on:
       - match-db
@@ -384,7 +340,7 @@ services:
       - socket-service
       - otel-collector
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: ${ENVIRONMENT}
       Services__DatabaseService: "http://match-db:8080"
       Services__EngineService: "http://engine-service:50056"
       Services__MoveValidatorService: "http://move-validator-service:50055"
@@ -395,57 +351,57 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.analysis.rule=Host(`analysis.maichess.berger-software.com`)"
-      - "traefik.http.routers.analysis.entrypoints=websecure"
-      - "traefik.http.routers.analysis.tls.certresolver=letsencrypt"
-      - "traefik.http.services.analysis.loadbalancer.server.port=8080"
+      - "traefik.http.routers.${ROUTER_PREFIX}-analysis.rule=Host(`${ANALYSIS_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-analysis.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-analysis.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-analysis.loadbalancer.server.port=8080"
 
   topology-service:
-    image: ghcr.io/maichess/maichess-topology-service:${TOPOLOGY_SERVICE:-main}
-    container_name: maichess-topology-service
+    image: ghcr.io/maichess/maichess-topology-service:${TOPOLOGY_SERVICE_TAG:-main}
     restart: unless-stopped
     depends_on:
       - otel-collector
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${ENVIRONMENT}
       SPANS_FILE: /var/log/otel/spans.jsonl
     volumes:
       - otel_spans:/var/log/otel
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.topology-api.rule=Host(`api.topology.maichess.berger-software.com`)"
-      - "traefik.http.routers.topology-api.entrypoints=websecure"
-      - "traefik.http.routers.topology-api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.topology-api.loadbalancer.server.port=3001"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology-api.rule=Host(`${TOPOLOGY_API_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology-api.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-topology-api.loadbalancer.server.port=3001"
 
   topology-client:
     image: ghcr.io/maichess/maichess-topology-client:${TOPOLOGY_CLIENT_TAG:-main}
-    container_name: maichess-topology-client
     restart: unless-stopped
     depends_on:
       - topology-service
     environment:
-      NEXT_PUBLIC_TOPOLOGY_WS_URL: ${TOPOLOGY_WS_URL:-wss://api.topology.maichess.berger-software.com/ws}
+      NEXT_PUBLIC_TOPOLOGY_WS_URL: ${TOPOLOGY_WS_URL}
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.topology.rule=Host(`topology.maichess.berger-software.com`)"
-      - "traefik.http.routers.topology.entrypoints=websecure"
-      - "traefik.http.routers.topology.tls.certresolver=letsencrypt"
-      - "traefik.http.services.topology.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology.rule=Host(`${TOPOLOGY_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-topology.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-topology.loadbalancer.server.port=3000"
 
   client:
     image: ghcr.io/maichess/maichess-client:${CLIENT_TAG:-main}
-    container_name: maichess-client
     restart: unless-stopped
     depends_on:
       - auth-service
@@ -462,13 +418,14 @@ services:
       # NEXT_PUBLIC_SOCKET_URL must be set at image build time — set this to the externally reachable socket-service URL
     networks:
       - services_network
+      - traefik
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "traefik.enable=true"
-      - "traefik.http.routers.client.rule=Host(`maichess.berger-software.com`)"
-      - "traefik.http.routers.client.entrypoints=websecure"
-      - "traefik.http.routers.client.tls.certresolver=letsencrypt"
-      - "traefik.http.services.client.loadbalancer.server.port=3000"
+      - "traefik.http.routers.${ROUTER_PREFIX}-client.rule=Host(`${CLIENT_DOMAIN}`)"
+      - "traefik.http.routers.${ROUTER_PREFIX}-client.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_PREFIX}-client.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${ROUTER_PREFIX}-client.loadbalancer.server.port=3000"
 
 
 volumes:
@@ -479,12 +436,9 @@ volumes:
   grafana_data:
   prometheus_data:
   otel_spans:
-  letsencrypt:
 
 networks:
-  db_network:
-    name: db_network
-    driver: bridge
+  traefik:
+    external: true
   services_network:
-    name: services_network
-    driver: bridge
+  db_network:
