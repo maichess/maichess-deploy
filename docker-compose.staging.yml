@@ -52,6 +52,19 @@ services:
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
+  prometheus:
+    container_name: staging-maichess-prometheus
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus-rw.rule=Host(`prometheus.staging.maichess.berger-software.com`) && PathPrefix(`/api/v1/write`)"
+      - "traefik.http.routers.prometheus-rw.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-rw.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.prometheus-rw.middlewares=prometheus-auth"
+      - "traefik.http.middlewares.prometheus-auth.basicauth.users=${PROMETHEUS_BASIC_AUTH_USERS}"
+      - "traefik.http.services.prometheus-rw.loadbalancer.server.port=9090"
+      - "traefik.docker.network=maichess-staging_services_network"
+
   watchtower:
     container_name: staging-watchtower
 

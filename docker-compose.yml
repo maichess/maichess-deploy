@@ -74,6 +74,32 @@ services:
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
+  prometheus:
+    image: prom/prometheus:v3.3.1
+    container_name: maichess-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-remote-write-receiver'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - services_network
+    depends_on:
+      - otel-collector
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus-rw.rule=Host(`prometheus.maichess.berger-software.com`) && PathPrefix(`/api/v1/write`)"
+      - "traefik.http.routers.prometheus-rw.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-rw.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.prometheus-rw.middlewares=prometheus-auth"
+      - "traefik.http.middlewares.prometheus-auth.basicauth.users=${PROMETHEUS_BASIC_AUTH_USERS}"
+      - "traefik.http.services.prometheus-rw.loadbalancer.server.port=9090"
+
   watchtower:
     image: ghcr.io/nicholas-fedor/watchtower:latest
     container_name: watchtower
@@ -454,6 +480,7 @@ volumes:
   redis_data:
   tempo_data:
   grafana_data:
+  prometheus_data:
   otel_spans:
   letsencrypt:
 
