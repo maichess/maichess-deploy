@@ -26,6 +26,7 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
     # No host port bindings — traffic arrives exclusively via prod Traefik's TCP passthrough.
     networks:
       - services_network   # maichess-staging_services_network — discover staging services
