@@ -24,6 +24,7 @@ exporters:
 
 connectors:
   servicegraph:
+    latency_histogram_buckets: [5ms, 25ms, 100ms, 250ms, 500ms, 1s, 2s, 5s]
     store:
       ttl: 2s
       max_items: 1000
