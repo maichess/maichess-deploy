@@ -212,6 +212,7 @@ services:
       USER_DB_SERVICE_GRPC_ADDR: user-db-ro:8080
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      UV_THREADPOOL_SIZE: 16
     networks:
       - db_network
       - services_network
