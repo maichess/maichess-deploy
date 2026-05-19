@@ -20,6 +20,7 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: 22
           script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             cd maichess-deploy
             git pull
 

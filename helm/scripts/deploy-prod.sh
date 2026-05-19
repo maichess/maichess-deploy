@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 cd "$(dirname "$0")/../maichess"
 
 helm dependency update .

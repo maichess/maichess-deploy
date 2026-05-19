@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 echo "This will delete the entire staging namespace and all its resources."
 read -r -p "Type 'yes' to continue: " confirm
