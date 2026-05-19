@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "match-manager-service"
-  "image" (printf "%s/maichess-match-manager-service:%s" .Values.global.imageRegistry (.Values.services.matchManagerService.tag | default "main"))
+  "image" (printf "%s/maichess-match-manager-service:%s" .Values.maichess.imageRegistry (.Values.services.matchManagerService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 8080 "name" "http")
   )

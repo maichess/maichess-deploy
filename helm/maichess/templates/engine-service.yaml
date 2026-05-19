@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "engine-service"
-  "image" (printf "%s/maichess-engine-service:%s" .Values.global.imageRegistry (.Values.services.engineService.tag | default "main"))
+  "image" (printf "%s/maichess-engine-service:%s" .Values.maichess.imageRegistry (.Values.services.engineService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 50056 "name" "grpc")
   )

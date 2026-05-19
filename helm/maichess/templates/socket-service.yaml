@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "socket-service"
-  "image" (printf "%s/maichess-socket-service:%s" .Values.global.imageRegistry (.Values.services.socketService.tag | default "main"))
+  "image" (printf "%s/maichess-socket-service:%s" .Values.maichess.imageRegistry (.Values.services.socketService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 3000 "name" "http")
     (dict "containerPort" 50051 "name" "grpc")

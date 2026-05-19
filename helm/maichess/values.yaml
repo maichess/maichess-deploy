@@ -2,9 +2,12 @@
 # Global
 # =============================================================================
 global:
-  imageRegistry: ghcr.io/maichess
   imagePullPolicy: Always
   environment: Production  # overridden in values-staging.yaml
+
+# Custom image registry for maichess services (NOT under global, so subcharts don't inherit it)
+maichess:
+  imageRegistry: ghcr.io/maichess
 
 # =============================================================================
 # Secrets (override via values-secrets-*.yaml on the server, NOT committed to git)

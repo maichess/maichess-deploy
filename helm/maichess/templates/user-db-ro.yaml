@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "user-db-ro"
-  "image" (printf "%s/maichess-database-service:%s" .Values.global.imageRegistry (.Values.services.databaseService.tag | default "main"))
+  "image" (printf "%s/maichess-database-service:%s" .Values.maichess.imageRegistry (.Values.services.databaseService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 8080 "name" "http")
   )

@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "user-service"
-  "image" (printf "%s/maichess-user-service:%s" .Values.global.imageRegistry (.Values.services.userService.tag | default "main"))
+  "image" (printf "%s/maichess-user-service:%s" .Values.maichess.imageRegistry (.Values.services.userService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 8080 "name" "http")
     (dict "containerPort" 8081 "name" "grpc")

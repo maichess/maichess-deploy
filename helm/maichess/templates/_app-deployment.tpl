@@ -34,10 +34,8 @@ spec:
       labels:
         app.kubernetes.io/component: {{ .name }}
     spec:
-      {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         - name: ghcr-pull-secret
-      {{- end }}
       containers:
         - name: {{ .name }}
           image: {{ .image }}

@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "topology-service"
-  "image" (printf "%s/maichess-topology-service:%s" .Values.global.imageRegistry (.Values.services.topologyService.tag | default "main"))
+  "image" (printf "%s/maichess-topology-service:%s" .Values.maichess.imageRegistry (.Values.services.topologyService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 3001 "name" "http")
   )

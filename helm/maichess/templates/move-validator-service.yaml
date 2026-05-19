@@ -1,6 +1,6 @@
 {{ include "maichess.app.deployment" (dict
   "name" "move-validator-service"
-  "image" (printf "%s/maichess-move-validator-service:%s" .Values.global.imageRegistry (.Values.services.moveValidatorService.tag | default "main"))
+  "image" (printf "%s/maichess-move-validator-service:%s" .Values.maichess.imageRegistry (.Values.services.moveValidatorService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 50055 "name" "grpc")
   )
