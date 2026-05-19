@@ -178,56 +178,10 @@ services:
     tag: main
 
 # =============================================================================
-# PostgreSQL (Bitnami subchart)
+# Databases (custom templates using official images, matching Docker Compose)
+# PostgreSQL: postgres:16, MongoDB: mongo:7, Redis: redis:7-alpine
+# Config is in templates/postgres.yaml, mongo.yaml, redis.yaml
 # =============================================================================
-postgresql:
-  fullnameOverride: postgres
-  image:
-    registry: docker.io
-    repository: bitnami/postgresql
-    tag: 16
-  auth:
-    username: maichess
-    database: maichess
-    existingSecret: maichess-db-secrets
-    secretKeys:
-      adminPasswordKey: postgres-password
-      userPasswordKey: postgres-password
-  primary:
-    persistence:
-      size: 10Gi
-
-# =============================================================================
-# MongoDB (Bitnami subchart)
-# =============================================================================
-mongodb:
-  fullnameOverride: mongo
-  image:
-    registry: docker.io
-    repository: bitnami/mongodb
-    tag: 7.0
-  auth:
-    rootUser: maichess
-    existingSecret: maichess-db-secrets
-  persistence:
-    size: 10Gi
-
-# =============================================================================
-# Redis (Bitnami subchart)
-# =============================================================================
-redis:
-  fullnameOverride: redis
-  image:
-    registry: docker.io
-    repository: bitnami/redis
-    tag: 7.4
-  auth:
-    existingSecret: maichess-db-secrets
-    existingSecretPasswordKey: redis-password
-  architecture: standalone
-  master:
-    persistence:
-      size: 2Gi
 
 # =============================================================================
 # Grafana (subchart)

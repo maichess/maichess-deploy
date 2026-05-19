@@ -6,20 +6,6 @@ version: 0.1.0
 appVersion: "1.0.0"
 
 dependencies:
-  # --- Databases ---
-  - name: postgresql
-    version: "~16.4"
-    repository: https://charts.bitnami.com/bitnami
-    alias: postgresql
-  - name: mongodb
-    version: "~16.4"
-    repository: https://charts.bitnami.com/bitnami
-    alias: mongodb
-  - name: redis
-    version: "~20.6"
-    repository: https://charts.bitnami.com/bitnami
-    alias: redis
-
   # --- Observability ---
   - name: grafana
     version: "~8.8"

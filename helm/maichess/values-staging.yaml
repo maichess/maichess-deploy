@@ -23,20 +23,8 @@ secrets:
   corsOrigin: "https://staging.maichess.berger-software.com"
   topologyWsUrl: "wss://api.topology.staging.maichess.berger-software.com/ws"
 
-# Ephemeral databases (no persistent storage)
-postgresql:
-  primary:
-    persistence:
-      enabled: false
-
-mongodb:
-  persistence:
-    enabled: false
-
-redis:
-  master:
-    persistence:
-      enabled: false
+# Note: staging database ephemeral storage not yet implemented
+# (custom StatefulSets always use PVCs; for staging, delete the namespace to reset)
 
 # Ephemeral observability
 grafana:
