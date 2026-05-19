@@ -35,10 +35,12 @@ jobs:
               -f /etc/maichess/values-secrets-prod.yaml \
               --wait --timeout 5m
 
-            # Deploy staging
-            helm upgrade --install maichess-staging . \
-              -n maichess-staging --create-namespace \
-              -f values.yaml \
-              -f values-staging.yaml \
-              -f /etc/maichess/values-secrets-staging.yaml \
-              --wait --timeout 5m
+            # TODO: Staging deploy needs fullnameOverride adjustments
+            # for cluster-scoped resources (ClusterRoles) to avoid
+            # conflicts with prod. Deploy staging manually for now.
+            # helm upgrade --install maichess-staging . \
+            #   -n maichess-staging --create-namespace \
+            #   -f values.yaml \
+            #   -f values-staging.yaml \
+            #   -f /etc/maichess/values-secrets-staging.yaml \
+            #   --wait --timeout 5m

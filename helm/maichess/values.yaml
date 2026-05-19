@@ -189,6 +189,8 @@ services:
 grafana:
   fullnameOverride: grafana
   adminPassword: ""  # set via secrets values file
+  rbac:
+    namespaced: true
   persistence:
     enabled: true
     size: 2Gi
