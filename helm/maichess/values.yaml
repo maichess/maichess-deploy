@@ -182,6 +182,10 @@ services:
 # =============================================================================
 postgresql:
   fullnameOverride: postgres
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: 16
   auth:
     username: maichess
     database: maichess
@@ -198,6 +202,10 @@ postgresql:
 # =============================================================================
 mongodb:
   fullnameOverride: mongo
+  image:
+    registry: docker.io
+    repository: bitnami/mongodb
+    tag: 7.0
   auth:
     rootUser: maichess
     existingSecret: maichess-db-secrets
@@ -209,6 +217,10 @@ mongodb:
 # =============================================================================
 redis:
   fullnameOverride: redis
+  image:
+    registry: docker.io
+    repository: bitnami/redis
+    tag: 7.4
   auth:
     existingSecret: maichess-db-secrets
     existingSecretPasswordKey: redis-password
