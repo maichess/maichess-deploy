@@ -1,3 +1,4 @@
+{{- if not .Values.certManager.skipClusterIssuer }}
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -12,3 +13,4 @@ spec:
       - http01:
           ingress:
             class: traefik
+{{- end }}

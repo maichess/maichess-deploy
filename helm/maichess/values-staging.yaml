@@ -17,6 +17,7 @@ ingress:
 
 certManager:
   email: tom@berger-software.com
+  skipClusterIssuer: true  # already created by prod release
 
 secrets:
   cookieDomain: staging.maichess.berger-software.com

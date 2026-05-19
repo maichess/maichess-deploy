@@ -261,6 +261,11 @@ tempo:
 # =============================================================================
 prometheus:
   fullnameOverride: prometheus
+  rbac:
+    create: false
+  serviceAccounts:
+    server:
+      create: true
   server:
     retention: 30d
     persistentVolume:
@@ -289,6 +294,8 @@ prometheus:
 otelCollector:
   fullnameOverride: otel-collector
   mode: deployment
+  clusterRole:
+    create: false
   image:
     repository: otel/opentelemetry-collector-contrib
   config:
