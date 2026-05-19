@@ -1,0 +1,24 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "user-service"
+  "image" (printf "%s/maichess-user-service:%s" .Values.global.imageRegistry (.Values.services.userService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+    (dict "containerPort" 8081 "name" "grpc")
+  )
+  "env" .Values.services.userService.env
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "user-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+    (dict "port" 8081 "targetPort" 8081 "protocol" "TCP" "name" "grpc")
+  )
+) }}

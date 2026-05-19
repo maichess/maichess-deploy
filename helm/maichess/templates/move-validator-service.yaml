@@ -1,0 +1,18 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "move-validator-service"
+  "image" (printf "%s/maichess-move-validator-service:%s" .Values.global.imageRegistry (.Values.services.moveValidatorService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 50055 "name" "grpc")
+  )
+  "env" .Values.services.moveValidatorService.env
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "move-validator-service"
+  "ports" (list
+    (dict "port" 50055 "targetPort" 50055 "protocol" "TCP" "name" "grpc")
+  )
+) }}

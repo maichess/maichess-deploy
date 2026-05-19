@@ -1,0 +1,373 @@
+# =============================================================================
+# Global
+# =============================================================================
+global:
+  imageRegistry: ghcr.io/maichess
+  imagePullPolicy: Always
+  environment: Production  # overridden in values-staging.yaml
+
+# =============================================================================
+# Secrets (override via values-secrets-*.yaml on the server, NOT committed to git)
+# =============================================================================
+secrets:
+  jwtSecret: "CHANGE_ME"
+  cookieDomain: "maichess.berger-software.com"
+  corsOrigin: "https://maichess.berger-software.com"
+  postgresPassword: "CHANGE_ME"
+  mongoPassword: "CHANGE_ME"
+  redisPassword: "CHANGE_ME"
+  grafanaAdminPassword: "CHANGE_ME"
+  prometheusBasicAuthUsers: "CHANGE_ME"
+  topologyWsUrl: "wss://api.topology.maichess.berger-software.com/ws"
+
+# =============================================================================
+# Ingress (all external-facing domains)
+# =============================================================================
+ingress:
+  enabled: true
+  clientDomain: maichess.berger-software.com
+  usersDomain: users.maichess.berger-software.com
+  authDomain: auth.maichess.berger-software.com
+  socketsDomain: sockets.maichess.berger-software.com
+  matchmakerDomain: matchmaker.maichess.berger-software.com
+  matchmanagerDomain: matchmanager.maichess.berger-software.com
+  analysisDomain: analysis.maichess.berger-software.com
+  grafanaDomain: grafana.maichess.berger-software.com
+  prometheusDomain: prometheus.maichess.berger-software.com
+  topologyApiDomain: api.topology.maichess.berger-software.com
+  topologyDomain: topology.maichess.berger-software.com
+
+certManager:
+  email: admin@berger-software.com
+
+# =============================================================================
+# Application Services
+# =============================================================================
+services:
+  client:
+    tag: main
+    env:
+      - name: AUTH_SERVICE_URL
+        value: "http://auth-service:3000"
+      - name: USER_SERVICE_URL
+        value: "http://user-service:8080"
+      - name: MATCH_MAKER_URL
+        value: "http://match-maker-service:8080"
+      - name: MATCH_MANAGER_URL
+        value: "http://match-manager-service:8080"
+      - name: ANALYSIS_SERVICE_URL
+        value: "http://analysis-service:8080"
+
+  userService:
+    tag: main
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__DatabaseService
+        value: "http://user-db:8080"
+      - name: OTEL_SERVICE_NAME
+        value: user-service
+
+  authService:
+    tag: main
+    env:
+      - name: NODE_ENV
+        value: "$(ENVIRONMENT)"
+      - name: USER_SERVICE_GRPC_ADDR
+        value: "user-service:8081"
+      - name: USER_DB_SERVICE_GRPC_ADDR
+        value: "user-db-ro:8080"
+      - name: UV_THREADPOOL_SIZE
+        value: "16"
+      - name: OTEL_SERVICE_NAME
+        value: auth-service
+
+  socketService:
+    tag: main
+    env:
+      - name: NODE_ENV
+        value: "$(ENVIRONMENT)"
+      - name: AUTH_SERVICE_GRPC_ADDR
+        value: "auth-service:50051"
+      - name: OTEL_SERVICE_NAME
+        value: socket-service
+
+  matchMakerService:
+    tag: main
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: MatchManager__Url
+        value: "http://match-manager-service:8081"
+      - name: Engine__Url
+        value: "http://engine-service:50056"
+      - name: Services__SocketService
+        value: "http://socket-service:50051"
+      - name: OTEL_SERVICE_NAME
+        value: match-maker-service
+
+  matchManagerService:
+    tag: main
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__DatabaseService
+        value: "http://match-db:8080"
+      - name: Services__MoveValidatorService
+        value: "http://move-validator-service:50055"
+      - name: Services__EngineService
+        value: "http://engine-service:50056"
+      - name: Services__UserService
+        value: "http://user-service:8081"
+      - name: Services__SocketService
+        value: "http://socket-service:50051"
+      - name: OTEL_SERVICE_NAME
+        value: match-manager-service
+
+  analysisService:
+    tag: main
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__DatabaseService
+        value: "http://match-db:8080"
+      - name: Services__EngineService
+        value: "http://engine-service:50056"
+      - name: Services__MoveValidatorService
+        value: "http://move-validator-service:50055"
+      - name: Services__SocketService
+        value: "http://socket-service:50051"
+      - name: Analysis__DefaultBotId
+        value: "blitz"
+      - name: Analysis__DefaultLineCount
+        value: "3"
+      - name: OTEL_SERVICE_NAME
+        value: analysis-service
+
+  moveValidatorService:
+    tag: main
+    env:
+      - name: GRPC_PORT
+        value: "50055"
+      - name: OTEL_SERVICE_NAME
+        value: move-validator-service
+
+  engineService:
+    tag: main
+    env:
+      - name: GRPC_PORT
+        value: "50056"
+      - name: OTEL_SERVICE_NAME
+        value: engine-service
+
+  databaseService:
+    tag: main
+
+  topologyService:
+    tag: main
+    env:
+      - name: SPANS_FILE
+        value: "/var/log/otel/spans.jsonl"
+      - name: OTEL_SERVICE_NAME
+        value: topology-service
+
+  topologyClient:
+    tag: main
+
+# =============================================================================
+# PostgreSQL (Bitnami subchart)
+# =============================================================================
+postgresql:
+  fullnameOverride: postgres
+  auth:
+    username: maichess
+    database: maichess
+    existingSecret: maichess-db-secrets
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: postgres-password
+  primary:
+    persistence:
+      size: 10Gi
+
+# =============================================================================
+# MongoDB (Bitnami subchart)
+# =============================================================================
+mongodb:
+  fullnameOverride: mongo
+  auth:
+    rootUser: maichess
+    existingSecret: maichess-db-secrets
+  persistence:
+    size: 10Gi
+
+# =============================================================================
+# Redis (Bitnami subchart)
+# =============================================================================
+redis:
+  fullnameOverride: redis
+  auth:
+    existingSecret: maichess-db-secrets
+    existingSecretPasswordKey: redis-password
+  architecture: standalone
+  master:
+    persistence:
+      size: 2Gi
+
+# =============================================================================
+# Grafana (subchart)
+# =============================================================================
+grafana:
+  fullnameOverride: grafana
+  adminPassword: ""  # set via secrets values file
+  persistence:
+    enabled: true
+    size: 2Gi
+  grafana.ini:
+    server:
+      root_url: "https://grafana.maichess.berger-software.com"
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          uid: prometheus
+          url: http://prometheus-server:9090
+          access: proxy
+          isDefault: false
+          editable: false
+          jsonData:
+            timeInterval: 15s
+        - name: Tempo
+          type: tempo
+          access: proxy
+          url: http://tempo:3200
+          isDefault: true
+          editable: true
+          jsonData:
+            tracesToLogsV2: {}
+            serviceMap:
+              datasourceUid: prometheus
+            nodeGraph:
+              enabled: true
+            search:
+              hide: false
+
+# =============================================================================
+# Tempo (subchart)
+# =============================================================================
+tempo:
+  fullnameOverride: tempo
+  tempo:
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /var/tempo/traces
+        wal:
+          path: /var/tempo/wal
+    ingester:
+      max_block_duration: 5m
+    compactor:
+      compaction:
+        block_retention: 1h
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+    stream_over_http_enabled: true
+  persistence:
+    enabled: true
+    size: 5Gi
+
+# =============================================================================
+# Prometheus (subchart)
+# =============================================================================
+prometheus:
+  fullnameOverride: prometheus
+  server:
+    retention: 30d
+    persistentVolume:
+      size: 10Gi
+    extraArgs:
+      web.enable-remote-write-receiver: ""
+  serverFiles:
+    prometheus.yml:
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+      scrape_configs:
+        - job_name: otel-collector
+          static_configs:
+            - targets: ['otel-collector:8889']
+  alertmanager:
+    enabled: false
+  kube-state-metrics:
+    enabled: false
+  prometheus-node-exporter:
+    enabled: false
+  prometheus-pushgateway:
+    enabled: false
+
+# =============================================================================
+# OpenTelemetry Collector (subchart)
+# =============================================================================
+otelCollector:
+  fullnameOverride: otel-collector
+  mode: deployment
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+    exporters:
+      otlp:
+        endpoint: "tempo:4317"
+        tls:
+          insecure: true
+      file:
+        path: /var/log/otel/spans.jsonl
+        rotation:
+          max_megabytes: 100
+          max_days: 1
+          max_backups: 3
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+    connectors:
+      servicegraph:
+        latency_histogram_buckets: [5ms, 25ms, 100ms, 250ms, 500ms, 1s, 2s, 5s]
+        store:
+          ttl: 2s
+          max_items: 1000
+        virtual_node_peer_attributes:
+          - net.peer.name
+          - server.address
+          - rpc.service
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp, file, servicegraph]
+        metrics/servicegraph:
+          receivers: [servicegraph]
+          exporters: [prometheus]
+  extraVolumes:
+    - name: otel-spans
+      persistentVolumeClaim:
+        claimName: otel-spans
+  extraVolumeMounts:
+    - name: otel-spans
+      mountPath: /var/log/otel

@@ -1,0 +1,20 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "topology-client"
+  "image" (printf "%s/maichess-topology-client:%s" .Values.global.imageRegistry (.Values.services.topologyClient.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 3000 "name" "http")
+  )
+  "env" (list
+    (dict "name" "NEXT_PUBLIC_TOPOLOGY_WS_URL" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "topology-ws-url")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "topology-client"
+  "ports" (list
+    (dict "port" 3000 "targetPort" 3000 "protocol" "TCP" "name" "http")
+  )
+) }}

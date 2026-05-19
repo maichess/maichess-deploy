@@ -1,1 +1,6 @@
 .env.**
+
+# Helm
+helm/maichess/charts/
+helm/maichess/Chart.lock
+values-secrets-*.yaml

@@ -1,0 +1,14 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "client"
+  "image" (printf "%s/maichess-client:%s" .Values.global.imageRegistry (.Values.services.client.tag | default "main"))
+  "ports" (list (dict "containerPort" 3000 "name" "http"))
+  "env" .Values.services.client.env
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "client"
+  "ports" (list (dict "port" 3000 "targetPort" 3000 "protocol" "TCP" "name" "http"))
+) }}

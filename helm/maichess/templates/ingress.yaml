@@ -1,0 +1,174 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: maichess-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.ingress.clientDomain }}
+        - {{ .Values.ingress.usersDomain }}
+        - {{ .Values.ingress.authDomain }}
+        - {{ .Values.ingress.socketsDomain }}
+        - {{ .Values.ingress.matchmakerDomain }}
+        - {{ .Values.ingress.matchmanagerDomain }}
+        - {{ .Values.ingress.analysisDomain }}
+        - {{ .Values.ingress.topologyDomain }}
+        - {{ .Values.ingress.topologyApiDomain }}
+      secretName: maichess-tls
+  rules:
+    - host: {{ .Values.ingress.clientDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client
+                port:
+                  number: 3000
+    - host: {{ .Values.ingress.usersDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 8080
+    - host: {{ .Values.ingress.authDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 3000
+    - host: {{ .Values.ingress.socketsDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: socket-service
+                port:
+                  number: 3000
+    - host: {{ .Values.ingress.matchmakerDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: match-maker-service
+                port:
+                  number: 8080
+    - host: {{ .Values.ingress.matchmanagerDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: match-manager-service
+                port:
+                  number: 8080
+    - host: {{ .Values.ingress.analysisDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: analysis-service
+                port:
+                  number: 8080
+    - host: {{ .Values.ingress.topologyDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: topology-client
+                port:
+                  number: 3000
+    - host: {{ .Values.ingress.topologyApiDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: topology-service
+                port:
+                  number: 3001
+---
+# Separate Ingress for observability (Grafana + Prometheus with middleware)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: maichess-observability-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.ingress.grafanaDomain }}
+        - {{ .Values.ingress.prometheusDomain }}
+      secretName: maichess-observability-tls
+  rules:
+    - host: {{ .Values.ingress.grafanaDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
+    - host: {{ .Values.ingress.prometheusDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-server
+                port:
+                  number: 80
+---
+# Prometheus remote-write endpoint with basic auth
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: prometheus-basic-auth
+spec:
+  basicAuth:
+    secret: prometheus-basic-auth-secret
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus-remote-write
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: "Host(`{{ .Values.ingress.prometheusDomain }}`) && PathPrefix(`/api/v1/write`)"
+      kind: Rule
+      middlewares:
+        - name: prometheus-basic-auth
+      services:
+        - name: prometheus-server
+          port: 80
+  tls:
+    certResolver: letsencrypt
+{{- end }}

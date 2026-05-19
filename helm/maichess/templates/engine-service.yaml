@@ -1,0 +1,18 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "engine-service"
+  "image" (printf "%s/maichess-engine-service:%s" .Values.global.imageRegistry (.Values.services.engineService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 50056 "name" "grpc")
+  )
+  "env" .Values.services.engineService.env
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "engine-service"
+  "ports" (list
+    (dict "port" 50056 "targetPort" 50056 "protocol" "TCP" "name" "grpc")
+  )
+) }}

@@ -1,0 +1,24 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "socket-service"
+  "image" (printf "%s/maichess-socket-service:%s" .Values.global.imageRegistry (.Values.services.socketService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 3000 "name" "http")
+    (dict "containerPort" 50051 "name" "grpc")
+  )
+  "env" .Values.services.socketService.env
+  "extraEnv" (list
+    (dict "name" "NODE_ENV" "value" .Values.global.environment)
+    (dict "name" "CORS_ORIGIN" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "cors-origin")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "socket-service"
+  "ports" (list
+    (dict "port" 3000 "targetPort" 3000 "protocol" "TCP" "name" "http")
+    (dict "port" 50051 "targetPort" 50051 "protocol" "TCP" "name" "grpc")
+  )
+) }}

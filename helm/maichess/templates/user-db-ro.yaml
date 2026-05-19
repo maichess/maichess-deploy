@@ -1,0 +1,26 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "user-db-ro"
+  "image" (printf "%s/maichess-database-service:%s" .Values.global.imageRegistry (.Values.services.databaseService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" (list
+    (dict "name" "OTEL_SERVICE_NAME" "value" "user-db-ro")
+    (dict "name" "Database__Adapter" "value" "postgres")
+    (dict "name" "Database__ReadOnly" "value" "true")
+  )
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Database__ConnectionString" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "postgres-connection-string")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "user-db-ro"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}

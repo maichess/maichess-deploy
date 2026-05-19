@@ -1,0 +1,23 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "match-maker-service"
+  "image" (printf "%s/maichess-match-maker-service:%s" .Values.global.imageRegistry (.Values.services.matchMakerService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" .Values.services.matchMakerService.env
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+    (dict "name" "ConnectionStrings__Redis" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-connection-string")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "match-maker-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}

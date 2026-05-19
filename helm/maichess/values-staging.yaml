@@ -1,0 +1,56 @@
+# Staging overrides — ephemeral storage, staging domains
+global:
+  environment: Staging
+
+ingress:
+  clientDomain: staging.maichess.berger-software.com
+  usersDomain: users.staging.maichess.berger-software.com
+  authDomain: auth.staging.maichess.berger-software.com
+  socketsDomain: sockets.staging.maichess.berger-software.com
+  matchmakerDomain: matchmaker.staging.maichess.berger-software.com
+  matchmanagerDomain: matchmanager.staging.maichess.berger-software.com
+  analysisDomain: analysis.staging.maichess.berger-software.com
+  grafanaDomain: grafana.staging.maichess.berger-software.com
+  prometheusDomain: prometheus.staging.maichess.berger-software.com
+  topologyApiDomain: api.topology.staging.maichess.berger-software.com
+  topologyDomain: topology.staging.maichess.berger-software.com
+
+certManager:
+  email: tom@berger-software.com
+
+secrets:
+  cookieDomain: staging.maichess.berger-software.com
+  corsOrigin: "https://staging.maichess.berger-software.com"
+  topologyWsUrl: "wss://api.topology.staging.maichess.berger-software.com/ws"
+
+# Ephemeral databases (no persistent storage)
+postgresql:
+  primary:
+    persistence:
+      enabled: false
+
+mongodb:
+  persistence:
+    enabled: false
+
+redis:
+  master:
+    persistence:
+      enabled: false
+
+# Ephemeral observability
+grafana:
+  persistence:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: "https://grafana.staging.maichess.berger-software.com"
+
+tempo:
+  persistence:
+    enabled: false
+
+prometheus:
+  server:
+    persistentVolume:
+      enabled: false

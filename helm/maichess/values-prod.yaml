@@ -1,0 +1,24 @@
+# Production overrides — persistent storage, production domains
+global:
+  environment: Production
+
+ingress:
+  clientDomain: maichess.berger-software.com
+  usersDomain: users.maichess.berger-software.com
+  authDomain: auth.maichess.berger-software.com
+  socketsDomain: sockets.maichess.berger-software.com
+  matchmakerDomain: matchmaker.maichess.berger-software.com
+  matchmanagerDomain: matchmanager.maichess.berger-software.com
+  analysisDomain: analysis.maichess.berger-software.com
+  grafanaDomain: grafana.maichess.berger-software.com
+  prometheusDomain: prometheus.maichess.berger-software.com
+  topologyApiDomain: api.topology.maichess.berger-software.com
+  topologyDomain: topology.maichess.berger-software.com
+
+certManager:
+  email: admin@berger-software.com
+
+grafana:
+  grafana.ini:
+    server:
+      root_url: "https://grafana.maichess.berger-software.com"

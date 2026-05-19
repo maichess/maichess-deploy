@@ -1,0 +1,39 @@
+apiVersion: v2
+name: maichess
+description: MaiChess microservice platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  # --- Databases ---
+  - name: postgresql
+    version: "~16.4"
+    repository: https://charts.bitnami.com/bitnami
+    alias: postgresql
+  - name: mongodb
+    version: "~16.4"
+    repository: https://charts.bitnami.com/bitnami
+    alias: mongodb
+  - name: redis
+    version: "~20.6"
+    repository: https://charts.bitnami.com/bitnami
+    alias: redis
+
+  # --- Observability ---
+  - name: grafana
+    version: "~8.8"
+    repository: https://grafana.github.io/helm-charts
+    alias: grafana
+  - name: tempo
+    version: "~1.15"
+    repository: https://grafana.github.io/helm-charts
+    alias: tempo
+  - name: prometheus
+    version: "~27.5"
+    repository: https://prometheus-community.github.io/helm-charts
+    alias: prometheus
+  - name: opentelemetry-collector
+    version: "~0.115"
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts
+    alias: otelCollector

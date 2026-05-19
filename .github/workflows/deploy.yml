@@ -6,14 +6,13 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Deploy to droplet
+      - name: Deploy to k3s
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ vars.DROPLET_HOST }}
@@ -22,4 +21,23 @@ jobs:
           port: 22
           script: |
             cd maichess-deploy
-            ./restart.sh
+            git pull
+
+            cd helm/maichess
+            helm dependency update .
+
+            # Deploy production
+            helm upgrade --install maichess . \
+              -n maichess --create-namespace \
+              -f values.yaml \
+              -f values-prod.yaml \
+              -f /etc/maichess/values-secrets-prod.yaml \
+              --wait --timeout 5m
+
+            # Deploy staging
+            helm upgrade --install maichess-staging . \
+              -n maichess-staging --create-namespace \
+              -f values.yaml \
+              -f values-staging.yaml \
+              -f /etc/maichess/values-secrets-staging.yaml \
+              --wait --timeout 5m

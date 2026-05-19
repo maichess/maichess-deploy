@@ -1,0 +1,26 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "auth-service"
+  "image" (printf "%s/maichess-auth-service:%s" .Values.global.imageRegistry (.Values.services.authService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 3000 "name" "http")
+    (dict "containerPort" 50051 "name" "grpc")
+  )
+  "env" .Values.services.authService.env
+  "extraEnv" (list
+    (dict "name" "NODE_ENV" "value" .Values.global.environment)
+    (dict "name" "JWT_SECRET" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+    (dict "name" "REDIS_URL" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-url")))
+    (dict "name" "COOKIE_DOMAIN" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "cookie-domain")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "auth-service"
+  "ports" (list
+    (dict "port" 3000 "targetPort" 3000 "protocol" "TCP" "name" "http")
+    (dict "port" 50051 "targetPort" 50051 "protocol" "TCP" "name" "grpc")
+  )
+) }}

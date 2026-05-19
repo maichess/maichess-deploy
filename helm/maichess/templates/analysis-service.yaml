@@ -1,0 +1,22 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "analysis-service"
+  "image" (printf "%s/maichess-analysis-service:%s" .Values.global.imageRegistry (.Values.services.analysisService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" .Values.services.analysisService.env
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "analysis-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}

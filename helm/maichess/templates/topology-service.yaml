@@ -1,0 +1,29 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "topology-service"
+  "image" (printf "%s/maichess-topology-service:%s" .Values.global.imageRegistry (.Values.services.topologyService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 3001 "name" "http")
+  )
+  "env" .Values.services.topologyService.env
+  "extraEnv" (list
+    (dict "name" "NODE_ENV" "value" .Values.global.environment)
+  )
+  "volumeMounts" (list
+    (dict "name" "otel-spans" "mountPath" "/var/log/otel")
+    (dict "name" "docker-sock" "mountPath" "/var/run/docker.sock" "readOnly" true)
+  )
+  "volumes" (list
+    (dict "name" "otel-spans" "persistentVolumeClaim" (dict "claimName" "otel-spans"))
+    (dict "name" "docker-sock" "hostPath" (dict "path" "/var/run/docker.sock" "type" "Socket"))
+  )
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "topology-service"
+  "ports" (list
+    (dict "port" 3001 "targetPort" 3001 "protocol" "TCP" "name" "http")
+  )
+) }}
