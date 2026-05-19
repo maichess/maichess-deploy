@@ -323,6 +323,8 @@ prometheus:
 otelCollector:
   fullnameOverride: otel-collector
   mode: deployment
+  image:
+    repository: otel/opentelemetry-collector-contrib
   config:
     receivers:
       otlp:
