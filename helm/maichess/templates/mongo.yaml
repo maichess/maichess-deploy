@@ -16,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/component: mongo
     spec:
+      affinity:
+        {{- include "maichess.affinityPrimary" . | nindent 8 }}
       containers:
         - name: mongodb
           image: mongo:7

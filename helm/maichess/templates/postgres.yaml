@@ -16,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/component: postgres
     spec:
+      affinity:
+        {{- include "maichess.affinityPrimary" . | nindent 8 }}
       containers:
         - name: postgresql
           image: postgres:16

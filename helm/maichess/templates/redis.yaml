@@ -16,6 +16,8 @@ spec:
       labels:
         app.kubernetes.io/component: redis
     spec:
+      affinity:
+        {{- include "maichess.affinityPrimary" . | nindent 8 }}
       containers:
         - name: redis
           image: redis:7-alpine

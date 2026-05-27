@@ -16,6 +16,7 @@
     (dict "name" "otel-spans" "persistentVolumeClaim" (dict "claimName" "otel-spans"))
     (dict "name" "docker-sock" "hostPath" (dict "path" "/var/run/docker.sock" "type" "Socket"))
   )
+  "affinity" (include "maichess.affinityPrimary" . | fromYaml)
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

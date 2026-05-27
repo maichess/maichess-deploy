@@ -5,6 +5,9 @@
     (dict "containerPort" 50055 "name" "grpc")
   )
   "env" .Values.services.moveValidatorService.env
+  "resources" .Values.services.moveValidatorService.resources
+  "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
+  "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

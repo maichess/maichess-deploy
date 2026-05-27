@@ -41,3 +41,40 @@ valueFrom:
     name: {{ .secret }}
     key: {{ .key }}
 {{- end }}
+
+{{/*
+Node affinity: pin to the primary node (maichess/role=primary)
+*/}}
+{{- define "maichess.affinityPrimary" -}}
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: maichess/role
+            operator: In
+            values:
+              - primary
+{{- end }}
+
+{{/*
+Toleration + soft affinity for burst-eligible services.
+Prefers the primary node but tolerates scheduling on the burst node.
+*/}}
+{{- define "maichess.affinityBurstEligible" -}}
+nodeAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 80
+      preference:
+        matchExpressions:
+          - key: maichess/role
+            operator: In
+            values:
+              - primary
+{{- end }}
+
+{{- define "maichess.tolerationBurst" -}}
+key: maichess/role
+operator: Equal
+value: burst
+effect: NoSchedule
+{{- end }}

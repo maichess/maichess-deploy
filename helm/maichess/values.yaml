@@ -97,6 +97,15 @@ services:
 
   matchMakerService:
     tag: main
+    resources:
+      requests:
+        cpu: 150m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: false
     env:
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
@@ -129,6 +138,15 @@ services:
 
   analysisService:
     tag: main
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    autoscaling:
+      enabled: false
     env:
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
@@ -149,6 +167,15 @@ services:
 
   moveValidatorService:
     tag: main
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 128Mi
+    autoscaling:
+      enabled: false
     env:
       - name: GRPC_PORT
         value: "50055"
@@ -157,6 +184,15 @@ services:
 
   engineService:
     tag: main
+    resources:
+      requests:
+        cpu: 200m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 256Mi
+    autoscaling:
+      enabled: false
     env:
       - name: GRPC_PORT
         value: "50056"

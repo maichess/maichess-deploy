@@ -9,6 +9,9 @@
     (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
     (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
   )
+  "resources" .Values.services.analysisService.resources
+  "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
+  "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))
   "Release" .Release
   "Chart" .Chart
   "Values" .Values
