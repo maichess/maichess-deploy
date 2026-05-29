@@ -187,13 +187,15 @@ services:
     resources:
       requests:
         cpu: 200m
-        memory: 128Mi
+        memory: 512Mi
       limits:
         cpu: "1"
-        memory: 256Mi
+        memory: 1Gi
     autoscaling:
       enabled: false
     env:
+      - name: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=75.0"
       - name: GRPC_PORT
         value: "50056"
       - name: OTEL_SERVICE_NAME
