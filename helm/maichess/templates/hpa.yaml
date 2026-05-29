@@ -4,6 +4,7 @@ Only created when autoscaling.enabled is true for a service.
 */}}
 
 {{- $services := dict
+  "auth-service" .Values.services.authService
   "engine-service" .Values.services.engineService
   "move-validator-service" .Values.services.moveValidatorService
   "analysis-service" .Values.services.analysisService

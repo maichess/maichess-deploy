@@ -6,6 +6,12 @@ global:
 # Autoscaling — burst-eligible services scale to the second node under load
 # =============================================================================
 services:
+  authService:
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 70
   engineService:
     autoscaling:
       enabled: true

@@ -26,6 +26,12 @@ secrets:
 
 # Autoscaling — same burst-eligible services as prod
 services:
+  authService:
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 70
   engineService:
     autoscaling:
       enabled: true
