@@ -67,6 +67,33 @@ grafana:
   grafana.ini:
     server:
       root_url: "https://grafana.staging.maichess.berger-software.com"
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          uid: prometheus
+          url: http://maichess-staging-prometheus-server:80
+          access: proxy
+          isDefault: false
+          editable: false
+          jsonData:
+            timeInterval: 15s
+        - name: Tempo
+          type: tempo
+          access: proxy
+          url: http://tempo:3100
+          isDefault: true
+          editable: true
+          jsonData:
+            tracesToLogsV2: {}
+            serviceMap:
+              datasourceUid: prometheus
+            nodeGraph:
+              enabled: true
+            search:
+              hide: false
 
 tempo:
   persistence:
@@ -76,3 +103,10 @@ prometheus:
   server:
     persistentVolume:
       enabled: false
+  extraScrapeConfigs: |
+    - job_name: otel-collector
+      static_configs:
+        - targets: ['otel-collector:8889']
+    - job_name: kube-state-metrics
+      static_configs:
+        - targets: ['maichess-staging-kube-state-metrics:8080']

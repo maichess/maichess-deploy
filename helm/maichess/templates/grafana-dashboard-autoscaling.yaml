@@ -34,7 +34,7 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_deployment_status_replicas{namespace=\"maichess\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service|client|socket-service|user-service|match-manager-service\"}",
+              "expr": "kube_deployment_status_replicas{namespace=\"{{ .Release.Namespace }}\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service|client|socket-service|user-service|match-manager-service\"}",
               "legendFormat": "{{ "{{deployment}}" }}"
             }
           ]
@@ -67,11 +67,11 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_deployment_status_replicas{namespace=\"maichess\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service\"}",
+              "expr": "kube_deployment_status_replicas{namespace=\"{{ .Release.Namespace }}\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service\"}",
               "legendFormat": "{{ "{{deployment}}" }} available"
             },
             {
-              "expr": "kube_hpa_status_desired_replicas{namespace=\"maichess\"}",
+              "expr": "kube_hpa_status_desired_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} desired"
             }
           ]
@@ -113,11 +113,11 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_hpa_status_current_metrics_average_utilization{namespace=\"maichess\"}",
+              "expr": "kube_hpa_status_current_metrics_average_utilization{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} current"
             },
             {
-              "expr": "kube_hpa_spec_target_metric{namespace=\"maichess\"}",
+              "expr": "kube_hpa_spec_target_metric{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} target"
             }
           ]
@@ -134,17 +134,17 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_hpa_spec_min_replicas{namespace=\"maichess\"}",
+              "expr": "kube_hpa_spec_min_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             },
             {
-              "expr": "kube_hpa_spec_max_replicas{namespace=\"maichess\"}",
+              "expr": "kube_hpa_spec_max_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             },
             {
-              "expr": "kube_hpa_status_current_replicas{namespace=\"maichess\"}",
+              "expr": "kube_hpa_status_current_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             }
