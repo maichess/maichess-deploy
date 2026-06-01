@@ -71,7 +71,7 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le, server) (rate(traces_service_graph_request_server_bucket[5m])))",
               "legendFormat": "{{ "{{server}}" }}"
             }
           ]
@@ -89,7 +89,7 @@ data:
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket[5m])))",
+              "expr": "histogram_quantile(0.50, sum by (le, server) (rate(traces_service_graph_request_server_bucket[5m])))",
               "legendFormat": "{{ "{{server}}" }}"
             }
           ]
