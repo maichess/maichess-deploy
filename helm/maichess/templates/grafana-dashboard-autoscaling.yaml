@@ -71,7 +71,7 @@ data:
               "legendFormat": "{{ "{{deployment}}" }} available"
             },
             {
-              "expr": "kube_hpa_status_desired_replicas{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} desired"
             }
           ]
@@ -113,11 +113,11 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_hpa_status_current_metrics_average_utilization{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_status_target_metric{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} current"
             },
             {
-              "expr": "kube_hpa_spec_target_metric{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"{{ .Release.Namespace }}\"}",
               "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} target"
             }
           ]
@@ -134,17 +134,17 @@ data:
           },
           "targets": [
             {
-              "expr": "kube_hpa_spec_min_replicas{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_spec_min_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             },
             {
-              "expr": "kube_hpa_spec_max_replicas{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             },
             {
-              "expr": "kube_hpa_status_current_replicas{namespace=\"{{ .Release.Namespace }}\"}",
+              "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"{{ .Release.Namespace }}\"}",
               "format": "table",
               "instant": true
             }
