@@ -141,7 +141,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: prometheus-server
+                name: maichess-prometheus-server
                 port:
                   number: 80
 ---
@@ -167,7 +167,7 @@ spec:
       middlewares:
         - name: prometheus-basic-auth
       services:
-        - name: prometheus-server
+        - name: maichess-prometheus-server
           port: 80
   tls:
     certResolver: letsencrypt

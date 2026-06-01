@@ -255,7 +255,7 @@ grafana:
         - name: Prometheus
           type: prometheus
           uid: prometheus
-          url: http://prometheus-server:9090
+          url: http://maichess-prometheus-server:80
           access: proxy
           isDefault: false
           editable: false
@@ -264,7 +264,7 @@ grafana:
         - name: Tempo
           type: tempo
           access: proxy
-          url: http://tempo:3200
+          url: http://tempo:3100
           isDefault: true
           editable: true
           jsonData:
@@ -393,6 +393,12 @@ otelCollector:
         metrics/servicegraph:
           receivers: [servicegraph]
           exporters: [prometheus]
+  ports:
+    prometheus:
+      enabled: true
+      containerPort: 8889
+      servicePort: 8889
+      protocol: TCP
   extraVolumes:
     - name: otel-spans
       persistentVolumeClaim:
