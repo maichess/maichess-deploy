@@ -52,6 +52,20 @@ spec:
             {{- if .extraEnv }}
             {{- toYaml .extraEnv | nindent 12 }}
             {{- end }}
+          {{- if .probePort }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .probePort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: {{ .probePort }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          {{- end }}
           {{- if .resources }}
           resources:
             {{- toYaml .resources | nindent 12 }}

@@ -5,6 +5,7 @@
     (dict "containerPort" 50055 "name" "grpc")
   )
   "env" .Values.services.moveValidatorService.env
+  "probePort" 50055
   "resources" .Values.services.moveValidatorService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
   "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))

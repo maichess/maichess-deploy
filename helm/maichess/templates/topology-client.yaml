@@ -7,6 +7,7 @@
   "env" (list
     (dict "name" "NEXT_PUBLIC_TOPOLOGY_WS_URL" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "topology-ws-url")))
   )
+  "probePort" 3000
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

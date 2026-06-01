@@ -14,6 +14,7 @@
     (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
     (dict "name" "Database__ConnectionString" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "postgres-connection-string")))
   )
+  "probePort" 8080
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

@@ -10,6 +10,7 @@
     (dict "name" "NODE_ENV" "value" .Values.global.environment)
     (dict "name" "CORS_ORIGIN" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "cors-origin")))
   )
+  "probePort" 3000
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

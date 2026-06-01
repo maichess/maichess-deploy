@@ -12,6 +12,7 @@
     (dict "name" "REDIS_URL" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-url")))
     (dict "name" "COOKIE_DOMAIN" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "cookie-domain")))
   )
+  "probePort" 3000
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

@@ -238,6 +238,10 @@ grafana:
   adminPassword: ""  # set via secrets values file
   rbac:
     namespaced: true
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
   persistence:
     enabled: true
     size: 2Gi

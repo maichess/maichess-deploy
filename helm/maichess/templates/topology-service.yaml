@@ -8,6 +8,7 @@
   "extraEnv" (list
     (dict "name" "NODE_ENV" "value" .Values.global.environment)
   )
+  "probePort" 3001
   "volumeMounts" (list
     (dict "name" "otel-spans" "mountPath" "/var/log/otel")
     (dict "name" "docker-sock" "mountPath" "/var/run/docker.sock" "readOnly" true)

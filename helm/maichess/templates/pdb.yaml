@@ -1,0 +1,31 @@
+{{/*
+PodDisruptionBudgets for burst-eligible services with autoscaling enabled.
+Ensures at least one pod stays available during voluntary disruptions
+(node drains, upgrades, cluster maintenance).
+*/}}
+
+{{- $services := dict
+  "auth-service" .Values.services.authService
+  "engine-service" .Values.services.engineService
+  "move-validator-service" .Values.services.moveValidatorService
+  "analysis-service" .Values.services.analysisService
+  "match-maker-service" .Values.services.matchMakerService
+}}
+
+{{- range $name, $svc := $services }}
+{{- if and $svc.autoscaling $svc.autoscaling.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "maichess.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: {{ $name }}
+{{- end }}
+{{- end }}

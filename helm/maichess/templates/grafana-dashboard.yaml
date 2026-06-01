@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maichess-service-health-dashboard
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  maichess-service-health.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Service Request Rate (per service)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_total[5m]))",
+              "legendFormat": "{{ "{{client}}" }} -> {{ "{{server}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Service Error Rate (per service)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+              "color": { "mode": "palette-classic" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_failed_total[5m]))",
+              "legendFormat": "{{ "{{client}}" }} -> {{ "{{server}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Service Latency p95 (server-side)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket[5m])))",
+              "legendFormat": "{{ "{{server}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Service Latency p50 (server-side)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket[5m])))",
+              "legendFormat": "{{ "{{server}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Active Replicas per Service",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "count by (server) (traces_service_graph_request_total)",
+              "legendFormat": "{{ "{{server}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Request Volume Heatmap (calls between services)",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "align": "auto", "displayMode": "color-background-solid" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "transparent", "value": null },
+                  { "color": "blue", "value": 0.01 },
+                  { "color": "green", "value": 1 },
+                  { "color": "yellow", "value": 10 },
+                  { "color": "red", "value": 50 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_total[5m]))",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true },
+                "renameByName": { "client": "Caller", "server": "Callee", "Value": "req/s" }
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["maichess", "service-health"],
+      "templating": { "list": [] },
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "MaiChess Service Health",
+      "uid": "maichess-service-health"
+    }

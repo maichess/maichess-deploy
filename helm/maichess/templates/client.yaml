@@ -3,6 +3,7 @@
   "image" (printf "%s/maichess-client:%s" .Values.maichess.imageRegistry (.Values.services.client.tag | default "main"))
   "ports" (list (dict "containerPort" 3000 "name" "http"))
   "env" .Values.services.client.env
+  "probePort" 3000
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

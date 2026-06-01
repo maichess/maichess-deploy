@@ -10,6 +10,7 @@
     (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
     (dict "name" "ConnectionStrings__Redis" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-connection-string")))
   )
+  "probePort" 8080
   "resources" .Values.services.matchMakerService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
   "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))
