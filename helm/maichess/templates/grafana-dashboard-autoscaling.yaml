@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maichess-autoscaling-dashboard
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  maichess-autoscaling.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "title": "Active Replicas over Time",
+          "description": "Shows how many replicas each deployment is running. Increases indicate HPA scale-up events.",
+          "type": "timeseries",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "stepAfter",
+                "fillOpacity": 15,
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto"
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas{namespace=\"maichess\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service|client|socket-service|user-service|match-manager-service\"}",
+              "legendFormat": "{{ "{{deployment}}" }}"
+            }
+          ]
+        },
+        {
+          "title": "Desired vs Available Replicas (HPA services)",
+          "description": "Compares HPA-desired replicas against actually available replicas. Gaps indicate pods still starting up.",
+          "type": "timeseries",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 10 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "stepAfter",
+                "fillOpacity": 0,
+                "lineWidth": 2
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byRegexp", "options": ".*desired" },
+                "properties": [
+                  { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 5] } }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas{namespace=\"maichess\", deployment=~\"auth-service|engine-service|move-validator-service|analysis-service|match-maker-service\"}",
+              "legendFormat": "{{ "{{deployment}}" }} available"
+            },
+            {
+              "expr": "kube_hpa_status_desired_replicas{namespace=\"maichess\"}",
+              "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} desired"
+            }
+          ]
+        },
+        {
+          "title": "HPA Current CPU Utilization vs Target",
+          "description": "Shows the CPU metric the HPA uses for scaling decisions compared to the configured target threshold.",
+          "type": "timeseries",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 2
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 60 },
+                  { "color": "red", "value": 80 }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byRegexp", "options": ".*target" },
+                "properties": [
+                  { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 5] } },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kube_hpa_status_current_metrics_average_utilization{namespace=\"maichess\"}",
+              "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} current"
+            },
+            {
+              "expr": "kube_hpa_spec_target_metric{namespace=\"maichess\"}",
+              "legendFormat": "{{ "{{horizontalpodautoscaler}}" }} target"
+            }
+          ]
+        },
+        {
+          "title": "HPA Min / Max / Current Replicas",
+          "type": "table",
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 30 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "align": "center" }
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_hpa_spec_min_replicas{namespace=\"maichess\"}",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "kube_hpa_spec_max_replicas{namespace=\"maichess\"}",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "kube_hpa_status_current_replicas{namespace=\"maichess\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": { "byField": "horizontalpodautoscaler" }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "job": true, "job 1": true, "job 2": true, "namespace": true, "namespace 1": true, "namespace 2": true, "instance": true, "instance 1": true, "instance 2": true },
+                "renameByName": {
+                  "horizontalpodautoscaler": "Service",
+                  "Value #A": "Min Replicas",
+                  "Value #B": "Max Replicas",
+                  "Value #C": "Current Replicas"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["maichess", "autoscaling", "hpa"],
+      "templating": { "list": [] },
+      "time": { "from": "now-6h", "to": "now" },
+      "title": "MaiChess Autoscaling",
+      "uid": "maichess-autoscaling"
+    }
