@@ -10,6 +10,7 @@ Ensures at least one pod stays available during voluntary disruptions
   "move-validator-service" .Values.services.moveValidatorService
   "analysis-service" .Values.services.analysisService
   "match-maker-service" .Values.services.matchMakerService
+  "bot-arena-service" .Values.services.botArenaService
 }}
 
 {{- range $name, $svc := $services }}

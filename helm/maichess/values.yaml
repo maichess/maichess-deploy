@@ -37,6 +37,7 @@ ingress:
   matchmakerDomain: matchmaker.maichess.berger-software.com
   matchmanagerDomain: matchmanager.maichess.berger-software.com
   analysisDomain: analysis.maichess.berger-software.com
+  arenaDomain: bot-arena.maichess.berger-software.com
   grafanaDomain: grafana.maichess.berger-software.com
   prometheusDomain: prometheus.maichess.berger-software.com
   topologyApiDomain: api.topology.maichess.berger-software.com
@@ -212,6 +213,31 @@ services:
         value: "50056"
       - name: OTEL_SERVICE_NAME
         value: engine-service
+
+  botArenaService:
+    tag: main
+    resources:
+      requests:
+        cpu: 150m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: false
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__DatabaseService
+        value: "http://arena-db:8080"
+      - name: Services__MatchManager
+        value: "http://match-manager-service:8081"
+      - name: Services__Engine
+        value: "http://engine-service:50056"
+      - name: Services__MatchMaker
+        value: "http://match-maker-service:8080"
+      - name: OTEL_SERVICE_NAME
+        value: bot-arena-service
 
   databaseService:
     tag: main
