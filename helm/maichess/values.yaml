@@ -171,6 +171,8 @@ services:
         value: "http://move-validator-service:50055"
       - name: Services__SocketService
         value: "http://socket-service:50051"
+      - name: Services__UserService
+        value: "http://user-service:8081"
       - name: Analysis__DefaultBotId
         value: "blitz"
       - name: Analysis__DefaultLineCount
