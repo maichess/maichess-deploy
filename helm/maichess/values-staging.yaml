@@ -16,6 +16,7 @@ ingress:
   topologyApiDomain: api.topology.staging.maichess.berger-software.com
   topologyDomain: topology.staging.maichess.berger-software.com
   tournamentDomain: tournament.staging.maichess.berger-software.com
+  tournamentBridgeDomain: tournament-bridge.staging.maichess.berger-software.com
 
 certManager:
   email: tom@berger-software.com
