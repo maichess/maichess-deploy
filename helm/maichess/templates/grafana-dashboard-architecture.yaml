@@ -1,0 +1,175 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maichess-architecture-dashboard
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  maichess-architecture.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "Service Topology",
+          "description": "Live service map from OpenTelemetry traces. Nodes represent services, edges represent observed calls. Green/red arcs show success vs error ratio.",
+          "type": "nodeGraph",
+          "gridPos": { "h": 24, "w": 24, "x": 0, "y": 0 },
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "queryType": "serviceMap",
+              "serviceMapQuery": "",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Active Services",
+          "description": "Services with incoming traffic in the selected time range. Green = receiving requests, red = no traffic observed.",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 0.001 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (server) (rate(traces_service_graph_request_total[5m]))",
+              "legendFormat": "{{ "{{server}}" }}"
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "none",
+            "orientation": "auto"
+          }
+        },
+        {
+          "id": 3,
+          "title": "Service Connections",
+          "description": "All observed service-to-service connections with request rate, error rate, and p95 latency.",
+          "type": "table",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 28 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "align": "auto" }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Requests/s" },
+                "properties": [
+                  { "id": "unit", "value": "reqps" },
+                  { "id": "decimals", "value": 2 }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Errors/s" },
+                "properties": [
+                  { "id": "unit", "value": "reqps" },
+                  { "id": "decimals", "value": 4 },
+                  { "id": "custom.displayMode", "value": "color-background-solid" },
+                  { "id": "thresholds", "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      { "color": "transparent", "value": null },
+                      { "color": "red", "value": 0.001 }
+                    ]
+                  }}
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p95 Latency" },
+                "properties": [
+                  { "id": "unit", "value": "s" },
+                  { "id": "decimals", "value": 3 }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_total[5m]))",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            },
+            {
+              "expr": "sum by (client, server) (rate(traces_service_graph_request_failed_total[5m]))",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, client, server) (rate(traces_service_graph_request_server_bucket[5m])))",
+              "format": "table",
+              "instant": true,
+              "refId": "C"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true },
+                "renameByName": {
+                  "client": "Source",
+                  "server": "Target",
+                  "Value #A": "Requests/s",
+                  "Value #B": "Errors/s",
+                  "Value #C": "p95 Latency"
+                },
+                "indexByName": {
+                  "client": 0,
+                  "server": 1,
+                  "Value #A": 2,
+                  "Value #B": 3,
+                  "Value #C": 4
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": {},
+                "sort": [
+                  { "field": "Requests/s", "desc": true }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["maichess", "architecture", "topology"],
+      "templating": { "list": [] },
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "MaiChess Architecture",
+      "uid": "maichess-architecture"
+    }
