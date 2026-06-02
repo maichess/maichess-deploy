@@ -39,6 +39,7 @@ ingress:
   prometheusDomain: prometheus.maichess.berger-software.com
   topologyApiDomain: api.topology.maichess.berger-software.com
   topologyDomain: topology.maichess.berger-software.com
+  tournamentDomain: tournament.maichess.berger-software.com
 
 certManager:
   email: admin@berger-software.com
@@ -223,6 +224,13 @@ services:
 
   topologyClient:
     tag: main
+
+  # Standalone tournament server (not part of the maichess microservice stack).
+  # Disabled by default; enabled in values-prod.yaml.
+  # TODO: switch tag to "main" once that image tag is published.
+  tournamentServer:
+    enabled: false
+    tag: "0.0.1"
 
 # =============================================================================
 # Databases (custom templates using official images, matching Docker Compose)

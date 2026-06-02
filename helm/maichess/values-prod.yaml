@@ -36,6 +36,8 @@ services:
       minReplicas: 1
       maxReplicas: 2
       targetCPU: 75
+  tournamentServer:
+    enabled: true
 
 ingress:
   clientDomain: maichess.berger-software.com
@@ -49,6 +51,7 @@ ingress:
   prometheusDomain: prometheus.maichess.berger-software.com
   topologyApiDomain: api.topology.maichess.berger-software.com
   topologyDomain: topology.maichess.berger-software.com
+  tournamentDomain: tournament.maichess.berger-software.com
 
 certManager:
   email: admin@berger-software.com
