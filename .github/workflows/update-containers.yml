@@ -1,0 +1,60 @@
+name: Update Containers
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment to update
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - prod
+          - staging
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update containers on k3s
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.DROPLET_HOST }}
+          username: ${{ vars.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: 22
+          script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            cd maichess-deploy
+            git pull
+
+            cd helm/maichess
+            helm dependency update .
+
+            if [[ "${{ inputs.environment }}" == "prod" || "${{ inputs.environment }}" == "both" ]]; then
+              echo "=== Updating production ==="
+              helm upgrade --install maichess . \
+                -n maichess --create-namespace \
+                -f values.yaml \
+                -f values-prod.yaml \
+                -f /etc/maichess/values-secrets-prod.yaml \
+                --wait --timeout 5m
+              kubectl rollout restart deployment -n maichess
+              kubectl rollout status deployment -n maichess --timeout 5m
+            fi
+
+            if [[ "${{ inputs.environment }}" == "staging" || "${{ inputs.environment }}" == "both" ]]; then
+              echo "=== Updating staging ==="
+              helm upgrade --install maichess-staging . \
+                -n maichess-staging --create-namespace \
+                -f values.yaml \
+                -f values-staging.yaml \
+                -f /etc/maichess/values-secrets-staging.yaml \
+                --wait --timeout 5m
+              kubectl rollout restart deployment -n maichess-staging
+              kubectl rollout status deployment -n maichess-staging --timeout 5m
+            fi
