@@ -34,6 +34,8 @@ jobs:
               -f values-prod.yaml \
               -f /etc/maichess/values-secrets-prod.yaml \
               --wait --timeout 5m
+            kubectl rollout restart deployment -n maichess
+            kubectl rollout status deployment -n maichess --timeout 5m
 
             # Deploy staging
             helm upgrade --install maichess-staging . \
@@ -42,3 +44,5 @@ jobs:
               -f values-staging.yaml \
               -f /etc/maichess/values-secrets-staging.yaml \
               --wait --timeout 5m
+            kubectl rollout restart deployment -n maichess-staging
+            kubectl rollout status deployment -n maichess-staging --timeout 5m
