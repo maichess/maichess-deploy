@@ -14,6 +14,7 @@ ingress:
   prometheusDomain: prometheus.staging.maichess.berger-software.com
   topologyApiDomain: api.topology.staging.maichess.berger-software.com
   topologyDomain: topology.staging.maichess.berger-software.com
+  tournamentDomain: tournament.staging.maichess.berger-software.com
 
 certManager:
   email: tom@berger-software.com
@@ -56,6 +57,9 @@ services:
       minReplicas: 1
       maxReplicas: 2
       targetCPU: 75
+  tournamentServer:
+    enabled: true
+    tag: nightly
 
 # Note: staging database ephemeral storage not yet implemented
 # (custom StatefulSets always use PVCs; for staging, delete the namespace to reset)

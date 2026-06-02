@@ -22,6 +22,8 @@ secrets:
   grafanaAdminPassword: "CHANGE_ME"
   prometheusBasicAuthUsers: "CHANGE_ME"
   topologyWsUrl: "wss://api.topology.maichess.berger-software.com/ws"
+  # Standalone tournament-server JWT signing key — not related to maichess auth.
+  tournamentJwtSecret: "CHANGE_ME"
 
 # =============================================================================
 # Ingress (all external-facing domains)
@@ -227,10 +229,9 @@ services:
 
   # Standalone tournament server (not part of the maichess microservice stack).
   # Disabled by default; enabled in values-prod.yaml.
-  # TODO: switch tag to "main" once that image tag is published.
   tournamentServer:
     enabled: false
-    tag: "0.0.1"
+    tag: main
 
 # =============================================================================
 # Databases (custom templates using official images, matching Docker Compose)

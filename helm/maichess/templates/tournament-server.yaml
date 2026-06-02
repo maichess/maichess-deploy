@@ -20,8 +20,14 @@ spec:
         - name: ghcr-pull-secret
       containers:
         - name: tournament-server
-          image: {{ .Values.maichess.imageRegistry }}/tournament-server:{{ .Values.services.tournamentServer.tag | default "0.0.1" }}
+          image: {{ .Values.maichess.imageRegistry }}/tournament-server:{{ .Values.services.tournamentServer.tag | default "main" }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - name: TOURNAMENT_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: maichess-app-secrets
+                  key: tournament-jwt-secret
           ports:
             - containerPort: 8080
               name: http
