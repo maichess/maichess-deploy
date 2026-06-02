@@ -1,0 +1,24 @@
+{{ include "maichess.app.deployment" (dict
+  "name" "tournament-bridge-service"
+  "image" (printf "%s/maichess-tournament-bridge-service:%s" .Values.maichess.imageRegistry (.Values.services.tournamentBridgeService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" .Values.services.tournamentBridgeService.env
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+    (dict "name" "TOURNAMENT_JWT_SECRET" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "tournament-jwt-secret")))
+  )
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "tournament-bridge-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}

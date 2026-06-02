@@ -43,6 +43,7 @@ ingress:
   topologyApiDomain: api.topology.maichess.berger-software.com
   topologyDomain: topology.maichess.berger-software.com
   tournamentDomain: tournament.maichess.berger-software.com
+  tournamentBridgeDomain: tournament-bridge.maichess.berger-software.com
 
 certManager:
   email: admin@berger-software.com
@@ -64,6 +65,8 @@ services:
         value: "http://match-manager-service:8080"
       - name: ANALYSIS_SERVICE_URL
         value: "http://analysis-service:8080"
+      - name: TOURNAMENT_BRIDGE_URL
+        value: "http://tournament-bridge-service:8080"
 
   userService:
     tag: main
@@ -252,6 +255,18 @@ services:
 
   topologyClient:
     tag: main
+
+  tournamentBridgeService:
+    tag: main
+    env:
+      - name: Services__MatchManagerService
+        value: "http://match-manager-service:8081"
+      - name: Services__EngineService
+        value: "http://engine-service:50056"
+      - name: TournamentServer__DefaultUrl
+        value: "http://tournament-server:8080"
+      - name: OTEL_SERVICE_NAME
+        value: tournament-bridge-service
 
   # Standalone tournament server (not part of the maichess microservice stack).
   # Disabled by default; enabled in values-prod.yaml.
