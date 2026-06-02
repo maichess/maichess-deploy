@@ -10,7 +10,7 @@ ingress:
   matchmakerDomain: matchmaker.staging.maichess.berger-software.com
   matchmanagerDomain: matchmanager.staging.maichess.berger-software.com
   analysisDomain: analysis.staging.maichess.berger-software.com
-  arenaDomain: arena.staging.maichess.berger-software.com
+  arenaDomain: bot-arena.staging.maichess.berger-software.com
   grafanaDomain: grafana.staging.maichess.berger-software.com
   prometheusDomain: prometheus.staging.maichess.berger-software.com
   topologyApiDomain: api.topology.staging.maichess.berger-software.com
