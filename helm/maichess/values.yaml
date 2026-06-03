@@ -65,6 +65,8 @@ services:
         value: "http://match-manager-service:8080"
       - name: ANALYSIS_SERVICE_URL
         value: "http://analysis-service:8080"
+      - name: BOT_ARENA_URL
+        value: "http://bot-arena-service:8080"
       - name: TOURNAMENT_BRIDGE_URL
         value: "http://tournament-bridge-service:8080"
 
