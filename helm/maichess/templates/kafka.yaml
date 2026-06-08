@@ -33,7 +33,10 @@ spec:
             - name: KAFKA_PROCESS_ROLES
               value: "broker,controller"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-              value: "1@kafka-0.kafka:9093"
+              # Single-node KRaft: the controller runs in this same pod, so use
+              # localhost and avoid any dependence on per-pod DNS resolution
+              # (kafka-0.kafka was failing with UnknownHostException at startup).
+              value: "1@localhost:9093"
             - name: KAFKA_LISTENERS
               value: "PLAINTEXT://:9092,CONTROLLER://:9093"
             - name: KAFKA_ADVERTISED_LISTENERS
