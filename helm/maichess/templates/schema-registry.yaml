@@ -16,6 +16,11 @@ spec:
       labels:
         app.kubernetes.io/component: schema-registry
     spec:
+      # Kubernetes injects legacy service-link env vars (e.g. SCHEMA_REGISTRY_PORT=
+      # tcp://<clusterIP>:8081 from the same-named Service). The Confluent entrypoint
+      # mistakes SCHEMA_REGISTRY_PORT for its deprecated port config and exits 1, so
+      # disable service-link injection for this pod.
+      enableServiceLinks: false
       affinity:
         {{- include "maichess.affinityPrimary" . | nindent 8 }}
       containers:
