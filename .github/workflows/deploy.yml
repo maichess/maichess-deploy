@@ -52,6 +52,6 @@ jobs:
               -f ./helm/maichess/values.yaml \
               -f ./helm/maichess/values-prod.yaml \
               -f /etc/maichess/values-secrets-prod.yaml \
-              --wait --timeout 5m
+              --wait --timeout 10m
             kubectl rollout restart deployment -n maichess
-            kubectl rollout status deployment -n maichess --timeout 5m
+            kubectl rollout status deployment -n maichess --timeout 10m
