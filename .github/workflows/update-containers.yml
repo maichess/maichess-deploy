@@ -27,6 +27,9 @@ jobs:
           username: ${{ vars.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: 22
+          # appleboy/ssh-action defaults command_timeout to 10m; restarting all
+          # deployments on one node needs more headroom.
+          command_timeout: 40m
           script: |
             set -euo pipefail
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
@@ -42,6 +45,21 @@ jobs:
               return 1
             }
 
+            # No --wait on helm: rollout restart + rollout status is the single
+            # readiness gate, so we don't wait for the release twice.
+            deploy_env() {
+              local release="$1" namespace="$2" values="$3" secrets="$4"
+              helm_dep_update
+              helm upgrade --install "$release" ./helm/maichess \
+                -n "$namespace" --create-namespace \
+                -f ./helm/maichess/values.yaml \
+                -f "$values" \
+                -f "$secrets" \
+                --timeout 10m
+              kubectl rollout restart deployment -n "$namespace"
+              kubectl rollout status deployment -n "$namespace" --timeout 25m
+            }
+
             cd maichess-deploy
             git fetch origin
 
@@ -49,30 +67,14 @@ jobs:
               echo "=== Updating production (main) ==="
               git checkout main
               git pull origin main
-              helm_dep_update
-              helm upgrade --install maichess ./helm/maichess \
-                -n maichess --create-namespace \
-                -f ./helm/maichess/values.yaml \
-                -f ./helm/maichess/values-prod.yaml \
-                -f /etc/maichess/values-secrets-prod.yaml \
-                --wait --timeout 10m
-              kubectl rollout restart deployment -n maichess
-              kubectl rollout status deployment -n maichess --timeout 10m
+              deploy_env maichess maichess ./helm/maichess/values-prod.yaml /etc/maichess/values-secrets-prod.yaml
             fi
 
             if [[ "${{ inputs.environment }}" == "staging" || "${{ inputs.environment }}" == "both" ]]; then
               echo "=== Updating staging (dev) ==="
               git checkout dev
               git pull origin dev
-              helm_dep_update
-              helm upgrade --install maichess-staging ./helm/maichess \
-                -n maichess-staging --create-namespace \
-                -f ./helm/maichess/values.yaml \
-                -f ./helm/maichess/values-staging.yaml \
-                -f /etc/maichess/values-secrets-staging.yaml \
-                --wait --timeout 10m
-              kubectl rollout restart deployment -n maichess-staging
-              kubectl rollout status deployment -n maichess-staging --timeout 10m
+              deploy_env maichess-staging maichess-staging ./helm/maichess/values-staging.yaml /etc/maichess/values-secrets-staging.yaml
             fi
 
             # Leave the working copy on main so the auto-deploy workflow is consistent.
