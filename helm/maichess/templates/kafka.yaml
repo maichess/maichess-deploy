@@ -98,6 +98,10 @@ metadata:
     app.kubernetes.io/component: kafka
 spec:
   clusterIP: None
+  # Publish the pod's DNS before it is Ready so kafka-0.kafka resolves during
+  # startup — the KRaft controller quorum voter (1@kafka-0.kafka:9093) must
+  # resolve before the broker can start and pass its readiness probe.
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/component: kafka
   ports:
