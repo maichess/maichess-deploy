@@ -46,6 +46,9 @@ spec:
           {{- end }}
           env:
             {{- include "maichess.otelEnv" . | nindent 12 }}
+            {{- if .Values.kafka.enabled }}
+            {{- include "maichess.kafkaEnv" . | nindent 12 }}
+            {{- end }}
             {{- if .env }}
             {{- toYaml .env | nindent 12 }}
             {{- end }}

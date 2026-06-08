@@ -2,6 +2,12 @@
 global:
   environment: Staging
 
+# Event-driven architecture: Kafka + Schema Registry on in staging only (prod off).
+kafka:
+  enabled: true
+  ui:
+    enabled: true
+
 ingress:
   clientDomain: staging.maichess.berger-software.com
   usersDomain: users.staging.maichess.berger-software.com
@@ -27,33 +33,56 @@ secrets:
   corsOrigin: "https://staging.maichess.berger-software.com"
   topologyWsUrl: "wss://api.topology.staging.maichess.berger-software.com/ws"
 
-# Autoscaling — same burst-eligible services as prod
+# Staging runs the `nightly` images built from each repo's `dev` branch
+# (prod uses `main`). Autoscaling mirrors prod for burst-eligible services.
+# analysisService / botArenaService have no dedicated image repo yet, so they
+# are left on the default tag.
 services:
+  client:
+    tag: nightly
+  userService:
+    tag: nightly
   authService:
+    tag: nightly
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 70
+  socketService:
+    tag: nightly
+  matchMakerService:
+    tag: nightly
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 2
+      targetCPU: 75
+  matchManagerService:
+    tag: nightly
+  moveValidatorService:
+    tag: nightly
     autoscaling:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPU: 70
   engineService:
+    tag: nightly
     autoscaling:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
       targetCPU: 70
-  moveValidatorService:
-    autoscaling:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 3
-      targetCPU: 70
+  databaseService:
+    tag: nightly
+  topologyService:
+    tag: nightly
+  topologyClient:
+    tag: nightly
+  tournamentBridgeService:
+    tag: nightly
   analysisService:
-    autoscaling:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 2
-      targetCPU: 75
-  matchMakerService:
     autoscaling:
       enabled: true
       minReplicas: 1
