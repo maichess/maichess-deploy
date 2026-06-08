@@ -24,13 +24,26 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: 22
           script: |
+            set -euo pipefail
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+            # Retry transient chart-download failures (e.g. GitHub 504s).
+            helm_dep_update() {
+              for i in 1 2 3; do
+                helm dependency update ./helm/maichess && return 0
+                echo "helm dependency update failed (attempt $i/3); retrying in 10s..."
+                sleep 10
+              done
+              echo "helm dependency update failed after 3 attempts"
+              return 1
+            }
+
             cd maichess-deploy
             git fetch origin
             git checkout main
             git pull origin main
 
-            helm dependency update ./helm/maichess
+            helm_dep_update
 
             # Production tracks the `main` branch only. Staging is deployed
             # separately from `dev` via the Update Containers workflow.
