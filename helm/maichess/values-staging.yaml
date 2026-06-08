@@ -8,6 +8,12 @@ kafka:
   ui:
     enabled: true
 
+# Change Data Capture: Kafka Connect + Debezium on in staging only (feature-prompts/10).
+# Enables Postgres wal_level=logical + the user-cdc connector and turns on the
+# user-service CDC relay (Cdc__Enabled, wired in user-service.yaml).
+kafkaConnect:
+  enabled: true
+
 ingress:
   clientDomain: staging.maichess.berger-software.com
   usersDomain: users.staging.maichess.berger-software.com

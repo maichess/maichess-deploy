@@ -1,3 +1,12 @@
+{{- $extraEnv := list
+  (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+  (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+}}
+{{- if .Values.kafkaConnect.enabled }}
+{{/* CDC relay: curate user.events.v1 from the Debezium user.cdc.v1 stream (feature-prompts/10).
+     Only enabled where Kafka Connect runs; KAFKA_BOOTSTRAP/SCHEMA_REGISTRY_URL come from kafkaEnv. */}}
+{{- $extraEnv = append $extraEnv (dict "name" "Cdc__Enabled" "value" "true") }}
+{{- end }}
 {{ include "maichess.app.deployment" (dict
   "name" "user-service"
   "image" (printf "%s/maichess-user-service:%s" .Values.maichess.imageRegistry (.Values.services.userService.tag | default "main"))
@@ -6,10 +15,7 @@
     (dict "containerPort" 8081 "name" "grpc")
   )
   "env" .Values.services.userService.env
-  "extraEnv" (list
-    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
-    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
-  )
+  "extraEnv" $extraEnv
   "probePort" 8080
   "Release" .Release
   "Chart" .Chart
