@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    # Workflow-only changes never need a redeploy; avoids restarting prod when
+    # CI/CD config changes.
+    paths-ignore:
+      - ".github/**"
 
 jobs:
   deploy:
@@ -12,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Deploy to k3s
+      - name: Deploy production to k3s
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ vars.DROPLET_HOST }}
@@ -20,29 +24,34 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: 22
           script: |
+            set -euo pipefail
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+            # Retry transient chart-download failures (e.g. GitHub 504s).
+            helm_dep_update() {
+              for i in 1 2 3; do
+                helm dependency update ./helm/maichess && return 0
+                echo "helm dependency update failed (attempt $i/3); retrying in 10s..."
+                sleep 10
+              done
+              echo "helm dependency update failed after 3 attempts"
+              return 1
+            }
+
             cd maichess-deploy
-            git pull
+            git fetch origin
+            git checkout main
+            git pull origin main
 
-            cd helm/maichess
-            helm dependency update .
+            helm_dep_update
 
-            # Deploy production
-            helm upgrade --install maichess . \
+            # Production tracks the `main` branch only. Staging is deployed
+            # separately from `dev` via the Update Containers workflow.
+            helm upgrade --install maichess ./helm/maichess \
               -n maichess --create-namespace \
-              -f values.yaml \
-              -f values-prod.yaml \
+              -f ./helm/maichess/values.yaml \
+              -f ./helm/maichess/values-prod.yaml \
               -f /etc/maichess/values-secrets-prod.yaml \
               --wait --timeout 5m
             kubectl rollout restart deployment -n maichess
             kubectl rollout status deployment -n maichess --timeout 5m
-
-            # Deploy staging
-            helm upgrade --install maichess-staging . \
-              -n maichess-staging --create-namespace \
-              -f values.yaml \
-              -f values-staging.yaml \
-              -f /etc/maichess/values-secrets-staging.yaml \
-              --wait --timeout 5m
-            kubectl rollout restart deployment -n maichess-staging
-            kubectl rollout status deployment -n maichess-staging --timeout 5m
