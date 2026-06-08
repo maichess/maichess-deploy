@@ -9,11 +9,17 @@
     (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
     (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
     (dict "name" "ConnectionStrings__Redis" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-connection-string")))
+    (dict "name" "STREAMIZ_STATE_DIR" "value" "/var/lib/match-maker/streamiz")
   )
   "probePort" 8080
   "resources" .Values.services.matchMakerService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
   "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))
+  {{- /* RocksDb state dir for the Streamiz user-ratings KTable. emptyDir is safe: the
+         store is rebuildable from its changelog topic on restart (see feature-prompts/11);
+         swap in a PVC for faster warm restarts. */}}
+  "volumes" (list (dict "name" "streamiz-state" "emptyDir" (dict)))
+  "volumeMounts" (list (dict "name" "streamiz-state" "mountPath" "/var/lib/match-maker/streamiz"))
   "Release" .Release
   "Chart" .Chart
   "Values" .Values

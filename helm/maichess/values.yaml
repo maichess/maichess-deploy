@@ -374,10 +374,26 @@ kafka:
       partitions: 3
       retentionMs: "3600000"       # 1h
       cleanupPolicy: delete
+    # matchmaking.events.v1 must share partition count with user.events.v1 (both 3) so
+    # the Match Maker KTable join co-partitions (matchmaking keyed by playerId joins
+    # user.events keyed by userId). See feature-prompts/11.
     - name: matchmaking.events.v1
       partitions: 3
       retentionMs: "604800000"     # 7d
       cleanupPolicy: delete
+    # Output of the Match Maker co-partitioned stream-table join (PlayerEnqueued tagged
+    # with the live KTable rating). Derived/rebuildable; bounded retention.
+    - name: matchmaking.skill.v1
+      partitions: 3
+      retentionMs: "604800000"     # 7d
+      cleanupPolicy: delete
+    # Changelog for the Streamiz user-ratings KTable RocksDb store (application.id +
+    # store name). Compacted: the durable backing the KTable restores from on a Match
+    # Maker restart. See feature-prompts/11.
+    - name: match-maker-user-ratings-user-ratings-store-changelog
+      partitions: 3
+      retentionMs: "-1"
+      cleanupPolicy: compact
     - name: analysis.commands.v1
       partitions: 3
       retentionMs: "3600000"       # 1h
