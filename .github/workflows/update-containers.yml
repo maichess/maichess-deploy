@@ -55,9 +55,9 @@ jobs:
                 -f ./helm/maichess/values.yaml \
                 -f ./helm/maichess/values-prod.yaml \
                 -f /etc/maichess/values-secrets-prod.yaml \
-                --wait --timeout 5m
+                --wait --timeout 10m
               kubectl rollout restart deployment -n maichess
-              kubectl rollout status deployment -n maichess --timeout 5m
+              kubectl rollout status deployment -n maichess --timeout 10m
             fi
 
             if [[ "${{ inputs.environment }}" == "staging" || "${{ inputs.environment }}" == "both" ]]; then
@@ -70,9 +70,9 @@ jobs:
                 -f ./helm/maichess/values.yaml \
                 -f ./helm/maichess/values-staging.yaml \
                 -f /etc/maichess/values-secrets-staging.yaml \
-                --wait --timeout 5m
+                --wait --timeout 10m
               kubectl rollout restart deployment -n maichess-staging
-              kubectl rollout status deployment -n maichess-staging --timeout 5m
+              kubectl rollout status deployment -n maichess-staging --timeout 10m
             fi
 
             # Leave the working copy on main so the auto-deploy workflow is consistent.
