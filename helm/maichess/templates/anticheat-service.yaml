@@ -1,0 +1,29 @@
+{{/*
+maichess-anticheat-service — consumes match.events / MatchEnded, scores games
+(engine correlation + statistical, pre-move aware), flags players, and emits
+cheat.events.v1. Repo created per feature-prompts/14. Kafka env is injected by
+the deployment macro when kafka.enabled.
+Enable once the repo/image exists: services.antiCheatService.enabled=true.
+*/}}
+{{- if .Values.services.antiCheatService.enabled }}
+{{ include "maichess.app.deployment" (dict
+  "name" "anticheat-service"
+  "image" (printf "%s/maichess-anticheat-service:%s" .Values.maichess.imageRegistry (.Values.services.antiCheatService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" .Values.services.antiCheatService.env
+  "resources" (.Values.services.antiCheatService.resources | default dict)
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "anticheat-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}
+{{- end }}

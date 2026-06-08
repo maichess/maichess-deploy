@@ -19,6 +19,9 @@ secrets:
   postgresPassword: "CHANGE_ME"
   mongoPassword: "CHANGE_ME"
   redisPassword: "CHANGE_ME"
+  # Mongo replica-set internal-auth keyfile (only used when kafkaConnect.enabled).
+  # Same content on every member, 6–1024 chars; override with random base64 in prod.
+  mongoKeyfile: "CHANGE_ME_REPLACE_WITH_RANDOM_BASE64_KEYFILE"
   grafanaAdminPassword: "CHANGE_ME"
   prometheusBasicAuthUsers: "CHANGE_ME"
   topologyWsUrl: "wss://api.topology.maichess.berger-software.com/ws"
@@ -69,6 +72,8 @@ services:
         value: "http://bot-arena-service:8080"
       - name: TOURNAMENT_BRIDGE_URL
         value: "http://tournament-bridge-service:8080"
+      - name: SEARCH_SERVICE_URL
+        value: "http://search-service:8080"
 
   userService:
     tag: main
@@ -249,6 +254,52 @@ services:
   databaseService:
     tag: main
 
+  # maichess-search-service (feature-prompts/13). Disabled until the repo/image
+  # exists; flip enabled=true (and elasticsearch.enabled / kafkaConnect.enabled).
+  searchService:
+    enabled: false
+    tag: main
+    resources:
+      requests:
+        cpu: 150m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Elasticsearch__Url
+        value: "http://elasticsearch:9200"
+      - name: Services__DatabaseService
+        value: "http://match-db:8080"
+      - name: OTEL_SERVICE_NAME
+        value: search-service
+
+  # maichess-anticheat-service (feature-prompts/14). Disabled until the repo/image
+  # and the database-service "anticheat" migration set exist.
+  antiCheatService:
+    enabled: false
+    tag: main
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__DatabaseService
+        value: "http://anticheat-db:8080"
+      - name: Services__MatchDb
+        value: "http://match-db:8080"
+      - name: Services__EngineService
+        value: "http://engine-service:50056"
+      - name: OTEL_SERVICE_NAME
+        value: anticheat-service
+
   topologyService:
     tag: main
     env:
@@ -343,6 +394,22 @@ kafka:
       partitions: 3
       retentionMs: "3600000"       # 1h
       cleanupPolicy: delete
+    # Anti-cheat flag propagation (feature-prompts/14). Compacted: latest flag
+    # state per user, consumed by the user read models / Match Maker.
+    - name: cheat.events.v1
+      partitions: 3
+      retentionMs: "-1"
+      cleanupPolicy: compact
+    # CDC raw change streams (feature-prompts/10, /13). Internal — not a consumer
+    # contract. Bounded retention; the curated user.events / ES indexer read these.
+    - name: user.cdc.v1
+      partitions: 3
+      retentionMs: "604800000"     # 7d
+      cleanupPolicy: delete
+    - name: match.cdc.v1
+      partitions: 3
+      retentionMs: "604800000"     # 7d
+      cleanupPolicy: delete
 
 schemaRegistry:
   image: confluentinc/cp-schema-registry:7.6.1
@@ -355,6 +422,48 @@ schemaRegistry:
     limits:
       cpu: 500m
       memory: 512Mi
+
+# =============================================================================
+# Change Data Capture — Kafka Connect + Debezium (template: kafka-connect.yaml)
+# See maichess-knowledge-base/change-data-capture.md
+# Postgres WAL -> user.cdc.v1 ; Mongo oplog -> match.cdc.v1
+# Prereqs: Postgres wal_level=logical + slot/publication; Mongo as a replica set.
+# =============================================================================
+kafkaConnect:
+  enabled: false
+  image: quay.io/debezium/connect:2.7
+  postgres:
+    host: postgres
+    port: 5432
+    user: maichess          # the image's superuser (POSTGRES_USER) — has REPLICATION
+    dbname: maichess
+  mongo:
+    dbname: maichess
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# =============================================================================
+# Elasticsearch — derived search read model (template: elasticsearch.yaml)
+# See maichess-knowledge-base/search-elasticsearch.md. Single node here; scale
+# the StatefulSet for a multi-node cluster in prod.
+# =============================================================================
+elasticsearch:
+  enabled: false
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.14.1
+  storage: 10Gi
+  javaOpts: "-Xms512m -Xmx512m"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
 
 # =============================================================================
 # Databases (custom templates using official images, matching Docker Compose)

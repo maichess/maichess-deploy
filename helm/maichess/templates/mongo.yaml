@@ -18,9 +18,33 @@ spec:
     spec:
       affinity:
         {{- include "maichess.affinityPrimary" . | nindent 8 }}
+      {{- if .Values.kafkaConnect.enabled }}
+      # A mounted Secret is root-owned 0644; mongod rejects a --keyFile unless it
+      # is 0400 and owned by the mongodb user (uid 999). Copy it to an emptyDir
+      # with the right perms before mongod starts.
+      initContainers:
+        - name: keyfile-perms
+          image: mongo:7
+          command:
+            - sh
+            - -c
+            - "cp /tmp/keyfile-src/mongo-keyfile /etc/mongo-key/keyfile && chmod 400 /etc/mongo-key/keyfile && chown 999:999 /etc/mongo-key/keyfile"
+          volumeMounts:
+            - name: keyfile-src
+              mountPath: /tmp/keyfile-src
+            - name: keyfile
+              mountPath: /etc/mongo-key
+      {{- end }}
       containers:
         - name: mongodb
           image: mongo:7
+          {{- if .Values.kafkaConnect.enabled }}
+          # Single-member replica set so an oplog exists for Debezium CDC
+          # (change-data-capture.md). --keyFile enables the internal auth that a
+          # replica set with access control requires. Existing data is preserved;
+          # rs.initiate() (see the mongo-rs-init Job) makes this node the primary.
+          args: ["--replSet", "rs0", "--keyFile", "/etc/mongo-key/keyfile", "--bind_ip_all"]
+          {{- end }}
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
               value: "maichess"
@@ -35,6 +59,21 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/db
+            {{- if .Values.kafkaConnect.enabled }}
+            - name: keyfile
+              mountPath: /etc/mongo-key
+            {{- end }}
+      {{- if .Values.kafkaConnect.enabled }}
+      volumes:
+        - name: keyfile-src
+          secret:
+            secretName: maichess-db-secrets
+            items:
+              - key: mongo-keyfile
+                path: mongo-keyfile
+        - name: keyfile
+          emptyDir: {}
+      {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -57,3 +96,59 @@ spec:
       targetPort: 27017
       protocol: TCP
       name: tcp
+{{- if .Values.kafkaConnect.enabled }}
+---
+# Initiates the single-member replica set once mongod is up. Idempotent: skips if
+# already initialized. Required before Debezium can read the oplog.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-rs-init
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mongo-rs-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "4"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: mongo-rs-init
+    spec:
+      restartPolicy: OnFailure
+      affinity:
+        {{- include "maichess.affinityPrimary" . | nindent 8 }}
+      containers:
+        - name: rs-init
+          image: mongo:7
+          env:
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: maichess-db-secrets
+                  key: mongo-password
+          command:
+            - bash
+            - -c
+            - |
+              set -eu
+              echo "Waiting for mongod to accept connections..."
+              until mongosh "mongodb://maichess:${MONGO_PASSWORD}@mongo:27017/?authSource=admin&directConnection=true" \
+                --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; do
+                sleep 5
+              done
+              echo "Initiating replica set rs0 (if not already)..."
+              mongosh "mongodb://maichess:${MONGO_PASSWORD}@mongo:27017/?authSource=admin&directConnection=true" \
+                --quiet --eval '
+                  try {
+                    rs.status();
+                    print("replica set already initialized");
+                  } catch (e) {
+                    rs.initiate({ _id: "rs0", members: [ { _id: 0, host: "mongo:27017" } ] });
+                    print("replica set initiated");
+                  }'
+{{- end }}

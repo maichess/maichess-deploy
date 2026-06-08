@@ -1,0 +1,29 @@
+{{/*
+maichess-search-service — Elasticsearch indexer (consumes match.cdc.v1 + analysis
+game changes) + search REST API (games / matches / positions). Repo created per
+feature-prompts/13. ES is a derived, rebuildable read model — never a source of
+truth. Kafka env is injected by the deployment macro when kafka.enabled.
+Enable once the repo/image exists: services.searchService.enabled=true.
+*/}}
+{{- if .Values.services.searchService.enabled }}
+{{ include "maichess.app.deployment" (dict
+  "name" "search-service"
+  "image" (printf "%s/maichess-search-service:%s" .Values.maichess.imageRegistry (.Values.services.searchService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" .Values.services.searchService.env
+  "resources" (.Values.services.searchService.resources | default dict)
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "search-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}
+{{- end }}

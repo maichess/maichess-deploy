@@ -1,0 +1,98 @@
+{{- if .Values.elasticsearch.enabled }}
+# Elasticsearch — derived search read model for maichess-search-service
+# (analysis_games / matches / positions indexes). Single node in staging; scale
+# the StatefulSet + set discovery for a 3-node cluster in prod. Never a source of
+# truth — every index is rebuildable from Mongo via the reindex job.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: elasticsearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: elasticsearch
+    spec:
+      affinity:
+        {{- include "maichess.affinityPrimary" . | nindent 8 }}
+      # vm.max_map_count must be >= 262144 for Elasticsearch. On nodes where it is
+      # not already set, an init container raises it (requires privileged).
+      initContainers:
+        - name: sysctl
+          image: busybox:1.36
+          command: ["sh", "-c", "sysctl -w vm.max_map_count=262144 || true"]
+          securityContext:
+            privileged: true
+      containers:
+        - name: elasticsearch
+          image: {{ .Values.elasticsearch.image | default "docker.elastic.co/elasticsearch/elasticsearch:8.14.1" | quote }}
+          env:
+            - name: discovery.type
+              value: "single-node"
+            - name: xpack.security.enabled
+              value: "false"
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.javaOpts | default "-Xms512m -Xmx512m" | quote }}
+            - name: bootstrap.memory_lock
+              value: "false"
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: 9200
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: 9200
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            {{- toYaml (.Values.elasticsearch.resources | default dict) | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.storage | default "10Gi" | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  labels:
+    app.kubernetes.io/component: elasticsearch
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: elasticsearch
+  ports:
+    - port: 9200
+      targetPort: 9200
+      protocol: TCP
+      name: http
+    - port: 9300
+      targetPort: 9300
+      protocol: TCP
+      name: transport
+{{- end }}

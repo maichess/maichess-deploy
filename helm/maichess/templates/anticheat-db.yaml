@@ -1,0 +1,37 @@
+{{/*
+anticheat-db — a DatabaseService instance (Mongo) for the anti-cheat domain.
+Same image as user-db / match-db / arena-db; stores cases/evidence/audit in its
+own collections in the shared Mongo. References match-db by id (no game-data copy).
+The "anticheat" migration set is added to maichess-database-service in feature-prompts/14.
+Enable together with the anti-cheat service: services.antiCheatService.enabled=true.
+*/}}
+{{- if .Values.services.antiCheatService.enabled }}
+{{ include "maichess.app.deployment" (dict
+  "name" "anticheat-db"
+  "image" (printf "%s/maichess-database-service:%s" .Values.maichess.imageRegistry (.Values.services.databaseService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" (list
+    (dict "name" "OTEL_SERVICE_NAME" "value" "anticheat-db")
+    (dict "name" "Database__Adapter" "value" "mongo")
+    (dict "name" "Database__ReadOnly" "value" "false")
+    (dict "name" "Database__Migrations" "value" "anticheat")
+  )
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Database__ConnectionString" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "mongo-connection-string")))
+  )
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "anticheat-db"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}
+{{- end }}
