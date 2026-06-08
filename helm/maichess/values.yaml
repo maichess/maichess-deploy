@@ -471,6 +471,12 @@ elasticsearch:
 # Config is in templates/postgres.yaml, mongo.yaml, redis.yaml
 # =============================================================================
 
+# Shared Redis cache (Match Maker queue + Match Manager finished-match read
+# model). All key namespaces are rebuildable/transient, so eviction runs
+# allkeys-lru once maxmemory is reached. See caching-and-read-models.md.
+redis:
+  maxmemory: "512mb"
+
 # =============================================================================
 # Grafana (subchart)
 # =============================================================================

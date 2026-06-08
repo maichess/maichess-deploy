@@ -8,6 +8,7 @@
   "extraEnv" (list
     (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
     (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+    (dict "name" "ConnectionStrings__Redis" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-connection-string")))
   )
   "probePort" 8080
   "Release" .Release

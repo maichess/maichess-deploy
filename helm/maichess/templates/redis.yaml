@@ -22,11 +22,23 @@ spec:
         - name: redis
           image: redis:7-alpine
           command: ["redis-server"]
+          # Shared Redis instance. Key namespaces:
+          #   queue:* / queue_entry:* / queue_user:*  — Match Maker queue (transient; clients re-queue on miss)
+          #   match:{id}                               — Match Manager finished-match doc cache (rebuildable from match-db)
+          #   matches:user:{userId}:{filter}:{p}:{sz}  — Match Manager ListUserMatches page cache (rebuildable from match-db)
+          # Every namespace tolerates eviction, so allkeys-lru is safe: the
+          # finished-match caches repopulate from match-db on a miss (see
+          # maichess-knowledge-base/caching-and-read-models.md) and queue clients
+          # re-enqueue. maxmemory bounds the working set; tune per cluster.
           args:
             - "--requirepass"
             - "$(REDIS_PASSWORD)"
             - "--appendonly"
             - "yes"
+            - "--maxmemory"
+            - {{ .Values.redis.maxmemory | default "512mb" | quote }}
+            - "--maxmemory-policy"
+            - "allkeys-lru"
           env:
             - name: REDIS_PASSWORD
               valueFrom:
