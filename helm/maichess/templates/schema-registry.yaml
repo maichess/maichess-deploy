@@ -38,6 +38,16 @@ spec:
           ports:
             - containerPort: 8081
               name: http
+          # Schema Registry joins the Kafka group / elects a leader before it
+          # binds :8081, which can exceed the liveness budget under load (full
+          # rollout + group rebalance). The startupProbe holds liveness off until
+          # the HTTP port is actually serving (up to ~5 min).
+          startupProbe:
+            httpGet:
+              path: /subjects
+              port: 8081
+            periodSeconds: 10
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /subjects
