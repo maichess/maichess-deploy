@@ -6,7 +6,7 @@ on:
       environment:
         description: Which environment to update
         required: true
-        default: both
+        default: staging
         type: choice
         options:
           - both
@@ -30,17 +30,17 @@ jobs:
           script: |
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             cd maichess-deploy
-            git pull
-
-            cd helm/maichess
-            helm dependency update .
+            git fetch origin
 
             if [[ "${{ inputs.environment }}" == "prod" || "${{ inputs.environment }}" == "both" ]]; then
-              echo "=== Updating production ==="
-              helm upgrade --install maichess . \
+              echo "=== Updating production (main) ==="
+              git checkout main
+              git pull origin main
+              helm dependency update ./helm/maichess
+              helm upgrade --install maichess ./helm/maichess \
                 -n maichess --create-namespace \
-                -f values.yaml \
-                -f values-prod.yaml \
+                -f ./helm/maichess/values.yaml \
+                -f ./helm/maichess/values-prod.yaml \
                 -f /etc/maichess/values-secrets-prod.yaml \
                 --wait --timeout 5m
               kubectl rollout restart deployment -n maichess
@@ -48,13 +48,19 @@ jobs:
             fi
 
             if [[ "${{ inputs.environment }}" == "staging" || "${{ inputs.environment }}" == "both" ]]; then
-              echo "=== Updating staging ==="
-              helm upgrade --install maichess-staging . \
+              echo "=== Updating staging (dev) ==="
+              git checkout dev
+              git pull origin dev
+              helm dependency update ./helm/maichess
+              helm upgrade --install maichess-staging ./helm/maichess \
                 -n maichess-staging --create-namespace \
-                -f values.yaml \
-                -f values-staging.yaml \
+                -f ./helm/maichess/values.yaml \
+                -f ./helm/maichess/values-staging.yaml \
                 -f /etc/maichess/values-secrets-staging.yaml \
                 --wait --timeout 5m
               kubectl rollout restart deployment -n maichess-staging
               kubectl rollout status deployment -n maichess-staging --timeout 5m
             fi
+
+            # Leave the working copy on main so the auto-deploy workflow is consistent.
+            git checkout main
