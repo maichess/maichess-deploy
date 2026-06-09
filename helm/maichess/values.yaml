@@ -146,6 +146,13 @@ services:
     env:
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
+      # Real-time socket fan-out stays on the proven gRPC path (Socket.BroadcastMatchEvent)
+      # until the Kafka move loop (Phase 3) lands. The socket.outbound.v1 producer is wired
+      # but the Kafka hop is not yet verified end-to-end; routing only the fan-out through
+      # Kafka adds a failure surface with no benefit while the move pipeline is still gRPC.
+      # Flip to "kafka" once socket.outbound consume/produce is confirmed in staging.
+      - name: Socket__Transport
+        value: "grpc"
       - name: Services__DatabaseService
         value: "http://match-db:8080"
       - name: Services__MoveValidatorService
