@@ -1,3 +1,6 @@
+{{- /* RocksDb state dir for the Streamiz user-ratings KTable. emptyDir is safe: the
+       store is rebuildable from its changelog topic on restart (see feature-prompts/11);
+       swap in a PVC for faster warm restarts. */ -}}
 {{ include "maichess.app.deployment" (dict
   "name" "match-maker-service"
   "image" (printf "%s/maichess-match-maker-service:%s" .Values.maichess.imageRegistry (.Values.services.matchMakerService.tag | default "main"))
@@ -15,9 +18,6 @@
   "resources" .Values.services.matchMakerService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
   "tolerations" (list (include "maichess.tolerationBurst" . | fromYaml))
-  {{- /* RocksDb state dir for the Streamiz user-ratings KTable. emptyDir is safe: the
-         store is rebuildable from its changelog topic on restart (see feature-prompts/11);
-         swap in a PVC for faster warm restarts. */}}
   "volumes" (list (dict "name" "streamiz-state" "emptyDir" (dict)))
   "volumeMounts" (list (dict "name" "streamiz-state" "mountPath" "/var/lib/match-maker/streamiz"))
   "Release" .Release
