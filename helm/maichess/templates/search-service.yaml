@@ -1,11 +1,18 @@
 {{/*
-maichess-search-service — Elasticsearch indexer (consumes match.cdc.v1 + analysis
-game changes) + search REST API (games / matches / positions). Repo created per
+maichess-search-service — Elasticsearch indexer (consumes match.cdc.v1 = matches +
+analysis_games) + search REST API (games / matches / positions). Repo created per
 feature-prompts/13. ES is a derived, rebuildable read model — never a source of
-truth. Kafka env is injected by the deployment macro when kafka.enabled.
-Enable once the repo/image exists: services.searchService.enabled=true.
+truth. Kafka env (KAFKA_BOOTSTRAP) is injected by the deployment macro when
+kafka.enabled; the CDC indexer is enabled only when kafkaConnect.enabled (the Mongo
+Debezium connector exists). Enable once the repo/image exists:
+services.searchService.enabled=true.
 */}}
 {{- if .Values.services.searchService.enabled }}
+{{- $extra := list
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret"))) }}
+{{- if .Values.kafkaConnect.enabled }}
+{{- $extra = append $extra (dict "name" "Cdc__Enabled" "value" "true") }}
+{{- end }}
 {{ include "maichess.app.deployment" (dict
   "name" "search-service"
   "image" (printf "%s/maichess-search-service:%s" .Values.maichess.imageRegistry (.Values.services.searchService.tag | default "main"))
@@ -13,6 +20,7 @@ Enable once the repo/image exists: services.searchService.enabled=true.
     (dict "containerPort" 8080 "name" "http")
   )
   "env" .Values.services.searchService.env
+  "extraEnv" $extra
   "resources" (.Values.services.searchService.resources | default dict)
   "probePort" 8080
   "Release" .Release
@@ -26,4 +34,43 @@ Enable once the repo/image exists: services.searchService.enabled=true.
     (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
   )
 ) }}
+{{- if .Values.services.searchService.reindex }}
+---
+# Reindex / backfill Job — rebuilds every ES index from the authoritative Mongo
+# collections via DatabaseService (the recovery path the ADR mandates: ES is derived,
+# never a source of truth). Runs the service image with `--reindex`, then exits.
+# Idempotent (stable doc ids), so safe to re-run. Gated by searchService.reindex —
+# set it true on first rollout or whenever a full rebuild is needed (on demand).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: search-reindex
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: search-reindex
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "20"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: search-reindex
+    spec:
+      restartPolicy: OnFailure
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: search-reindex
+          image: {{ printf "%s/maichess-search-service:%s" .Values.maichess.imageRegistry (.Values.services.searchService.tag | default "main") }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          args: ["--reindex"]
+          env:
+            {{- toYaml .Values.services.searchService.env | nindent 12 }}
+          resources:
+            {{- toYaml (.Values.services.searchService.resources | default dict) | nindent 12 }}
+{{- end }}
 {{- end }}

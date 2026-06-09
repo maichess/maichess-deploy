@@ -259,6 +259,9 @@ services:
   searchService:
     enabled: false
     tag: main
+    # Run the reindex/backfill Job (post-install/upgrade hook) that rebuilds every
+    # ES index from Mongo. Set true on first rollout or for an on-demand full rebuild.
+    reindex: false
     resources:
       requests:
         cpu: 150m
