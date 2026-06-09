@@ -373,6 +373,11 @@ prometheus:
     server:
       create: true
   server:
+    # Uses in-cluster kubernetes_sd, so it needs the API. The apiserver endpoint is
+    # the node's public IP, which is firewalled from the WireGuard-only worker nodes
+    # (flost/mega) — pin to the API-local control-plane node.
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
     retention: 30d
     persistentVolume:
       size: 10Gi
@@ -392,6 +397,9 @@ prometheus:
     enabled: false
   kube-state-metrics:
     enabled: true
+    # Talks to the API; pin to the control-plane node (see server.nodeSelector above).
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
