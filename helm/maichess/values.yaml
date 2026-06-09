@@ -156,6 +156,10 @@ services:
         value: "http://user-service:8081"
       - name: Services__SocketService
         value: "http://socket-service:50051"
+      # Real-time fan-out goes over Kafka (socket.outbound.v1, Protobuf). The prior
+      # grpc revert (the socket caveat) is resolved — Kafka task 02.
+      - name: Socket__Transport
+        value: "kafka"
       - name: OTEL_SERVICE_NAME
         value: match-manager-service
 
