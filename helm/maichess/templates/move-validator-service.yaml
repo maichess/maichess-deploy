@@ -5,6 +5,7 @@
     (dict "containerPort" 50055 "name" "grpc")
   )
   "env" .Values.services.moveValidatorService.env
+  "extraEnv" (ternary (list (dict "name" "KAFKA_ENABLED" "value" "true")) (list) .Values.kafka.enabled)
   "probePort" 50055
   "resources" .Values.services.moveValidatorService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)
