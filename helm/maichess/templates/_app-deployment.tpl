@@ -24,6 +24,7 @@ metadata:
   labels:
     {{- include "maichess.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ .name }}
+    maichess.io/container-update: "true"
 spec:
   replicas: {{ .replicas | default 1 }}
   selector:
@@ -33,6 +34,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/component: {{ .name }}
+        maichess.io/container-update: "true"
     spec:
       imagePullSecrets:
         - name: ghcr-pull-secret

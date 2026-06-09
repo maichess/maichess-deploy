@@ -49,6 +49,7 @@ jobs:
             # readiness gate, so we don't wait for the release twice.
             deploy_env() {
               local release="$1" namespace="$2" values="$3" secrets="$4"
+              local restart_selector="maichess.io/container-update=true"
               helm_dep_update
               helm upgrade --install "$release" ./helm/maichess \
                 -n "$namespace" --create-namespace \
@@ -56,8 +57,18 @@ jobs:
                 -f "$values" \
                 -f "$secrets" \
                 --timeout 10m
-              kubectl rollout restart deployment -n "$namespace"
-              kubectl rollout status deployment -n "$namespace" --timeout 25m
+              kubectl rollout restart deployment -n "$namespace" -l "$restart_selector"
+              if ! kubectl rollout status deployment -n "$namespace" -l "$restart_selector" --timeout 25m; then
+                echo "=== Rollout failed; deployment status ==="
+                kubectl get deployment -n "$namespace" -l "$restart_selector" -o wide
+                echo "=== Pods for container-update deployments ==="
+                kubectl get pod -n "$namespace" -l "$restart_selector" -o wide
+                echo "=== Non-ready / terminating pod details ==="
+                kubectl describe pod -n "$namespace" -l "$restart_selector"
+                echo "=== Recent namespace events ==="
+                kubectl get events -n "$namespace" --sort-by=.lastTimestamp
+                return 1
+              fi
             }
 
             cd maichess-deploy

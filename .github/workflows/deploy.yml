@@ -29,6 +29,7 @@ jobs:
           script: |
             set -euo pipefail
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            restart_selector="maichess.io/container-update=true"
 
             # Retry transient chart-download failures (e.g. GitHub 504s).
             helm_dep_update() {
@@ -58,5 +59,15 @@ jobs:
               -f ./helm/maichess/values-prod.yaml \
               -f /etc/maichess/values-secrets-prod.yaml \
               --timeout 10m
-            kubectl rollout restart deployment -n maichess
-            kubectl rollout status deployment -n maichess --timeout 25m
+            kubectl rollout restart deployment -n maichess -l "$restart_selector"
+            if ! kubectl rollout status deployment -n maichess -l "$restart_selector" --timeout 25m; then
+              echo "=== Rollout failed; deployment status ==="
+              kubectl get deployment -n maichess -l "$restart_selector" -o wide
+              echo "=== Pods for container-update deployments ==="
+              kubectl get pod -n maichess -l "$restart_selector" -o wide
+              echo "=== Non-ready / terminating pod details ==="
+              kubectl describe pod -n maichess -l "$restart_selector"
+              echo "=== Recent namespace events ==="
+              kubectl get events -n maichess --sort-by=.lastTimestamp
+              exit 1
+            fi

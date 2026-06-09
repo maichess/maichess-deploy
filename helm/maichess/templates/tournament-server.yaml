@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "maichess.labels" . | nindent 4 }}
     app.kubernetes.io/component: tournament-server
+    maichess.io/container-update: "true"
 spec:
   replicas: 1
   selector:
@@ -15,6 +16,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/component: tournament-server
+        maichess.io/container-update: "true"
     spec:
       imagePullSecrets:
         - name: ghcr-pull-secret
