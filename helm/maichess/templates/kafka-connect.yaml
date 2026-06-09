@@ -175,6 +175,7 @@ spec:
                 "mongodb.connection.string": "'"$MONGO_CONNECTION_STRING"'",
                 "topic.prefix": "maichess_mongo",
                 "collection.include.list": "{{ .Values.kafkaConnect.mongo.dbname | default "maichess" }}.matches,{{ .Values.kafkaConnect.mongo.dbname | default "maichess" }}.analysis_games",
+                "capture.mode": "change_streams_update_full",
                 "transforms": "route",
                 "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
                 "transforms.route.regex": ".*",

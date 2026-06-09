@@ -14,6 +14,9 @@ kafka:
 kafkaConnect:
   enabled: true
 
+elasticsearch:
+  enabled: true
+
 ingress:
   clientDomain: staging.maichess.berger-software.com
   usersDomain: users.staging.maichess.berger-software.com
@@ -103,6 +106,10 @@ services:
   tournamentServer:
     enabled: true
     tag: nightly
+  searchService:
+    enabled: true
+    tag: nightly
+    reindex: true
 
 # Note: staging database ephemeral storage not yet implemented
 # (custom StatefulSets always use PVCs; for staging, delete the namespace to reset)

@@ -44,6 +44,12 @@ services:
       targetCPU: 75
   tournamentServer:
     enabled: true
+  searchService:
+    enabled: true
+    reindex: true
+
+elasticsearch:
+  enabled: true
 
 ingress:
   clientDomain: maichess.berger-software.com
