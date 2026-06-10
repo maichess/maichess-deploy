@@ -182,6 +182,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
         value: "http://match-db:8080"
       - name: Services__EngineService
@@ -247,6 +249,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
         value: "http://arena-db:8080"
       - name: Services__MatchManager
@@ -277,6 +281,8 @@ services:
         cpu: 500m
         memory: 512Mi
     env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
       - name: Elasticsearch__Url
         value: "http://elasticsearch:9200"
       - name: Services__DatabaseService
@@ -297,6 +303,8 @@ services:
         cpu: "1"
         memory: 512Mi
     env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
         value: "http://anticheat-db:8080"
       - name: Services__MatchDb
@@ -687,5 +695,3 @@ otelCollector:
   extraVolumeMounts:
     - name: otel-spans
       mountPath: /var/log/otel
-/var/log/otel
-

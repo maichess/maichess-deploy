@@ -185,6 +185,3 @@ spec:
               echo "Connectors registered."
               curl -s "$CONNECT/connectors"
 {{- end }}
-{{- end }}
-rs"
-{{- end }}

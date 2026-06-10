@@ -18,7 +18,7 @@ spec:
     spec:
       affinity:
         {{- include "maichess.affinityPrimary" . | nindent 8 }}
-      {{- if and .Values.kafkaConnect.enabled .Values.kafka.enabled }}
+      {{- if .Values.kafkaConnect.enabled }}
       # A mounted Secret is root-owned 0644; mongod rejects a --keyFile unless it
       # is 0400 and owned by the mongodb user (uid 999). Copy it to an emptyDir
       # with the right perms before mongod starts.
@@ -38,7 +38,7 @@ spec:
       containers:
         - name: mongodb
           image: mongo:7
-          {{- if and .Values.kafkaConnect.enabled .Values.kafka.enabled }}
+          {{- if .Values.kafkaConnect.enabled }}
           # Single-member replica set so an oplog exists for Debezium CDC
           # (change-data-capture.md). --keyFile enables the internal auth that a
           # replica set with access control requires. Existing data is preserved;
@@ -59,11 +59,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/db
-            {{- if and .Values.kafkaConnect.enabled .Values.kafka.enabled }}
+            {{- if .Values.kafkaConnect.enabled }}
             - name: keyfile
               mountPath: /etc/mongo-key
             {{- end }}
-      {{- if and .Values.kafkaConnect.enabled .Values.kafka.enabled }}
+      {{- if .Values.kafkaConnect.enabled }}
       volumes:
         - name: keyfile-src
           secret:
@@ -151,7 +151,4 @@ spec:
                     rs.initiate({ _id: "rs0", members: [ { _id: 0, host: "mongo:27017" } ] });
                     print("replica set initiated");
                   }'
-{{- end }}
-{{- end }}
- }'
 {{- end }}

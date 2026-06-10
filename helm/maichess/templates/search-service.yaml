@@ -34,7 +34,7 @@ services.searchService.enabled=true.
     (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
   )
 ) }}
-{{- if and .Values.services.searchService.reindex .Values.kafka.enabled }}
+{{- if .Values.services.searchService.reindex }}
 ---
 # Reindex / backfill Job — rebuilds every ES index from the authoritative Mongo
 # collections via DatabaseService (the recovery path the ADR mandates: ES is derived,
