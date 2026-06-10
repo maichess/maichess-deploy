@@ -1,11 +1,20 @@
 {{/*
 maichess-anticheat-service — consumes match.events / MatchEnded, scores games
 (engine correlation + statistical, pre-move aware), flags players, and emits
-cheat.events.v1. Repo created per feature-prompts/14. Kafka env is injected by
-the deployment macro when kafka.enabled.
+cheat.events.v1. Repo created per feature-prompts/14. Kafka env (KAFKA_BOOTSTRAP /
+SCHEMA_REGISTRY_URL) is injected by the deployment macro when kafka.enabled; the
+match.events consumer + cheat.events producer + post-game analysis worker are
+themselves gated on Kafka__Enabled, set only when kafka.enabled (with Kafka off,
+the Dev REST surface still serves cases from anticheat-db). Engine must be reachable
+(async, throttled AnalyzePosition load — one game at a time, per-ply delay).
 Enable once the repo/image exists: services.antiCheatService.enabled=true.
 */}}
 {{- if .Values.services.antiCheatService.enabled }}
+{{- $extra := list
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret"))) }}
+{{- if .Values.kafka.enabled }}
+{{- $extra = append $extra (dict "name" "Kafka__Enabled" "value" "true") }}
+{{- end }}
 {{ include "maichess.app.deployment" (dict
   "name" "anticheat-service"
   "image" (printf "%s/maichess-anticheat-service:%s" .Values.maichess.imageRegistry (.Values.services.antiCheatService.tag | default "main"))
@@ -13,6 +22,7 @@ Enable once the repo/image exists: services.antiCheatService.enabled=true.
     (dict "containerPort" 8080 "name" "http")
   )
   "env" .Values.services.antiCheatService.env
+  "extraEnv" $extra
   "resources" (.Values.services.antiCheatService.resources | default dict)
   "probePort" 8080
   "Release" .Release

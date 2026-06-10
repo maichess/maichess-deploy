@@ -74,6 +74,8 @@ services:
         value: "http://tournament-bridge-service:8080"
       - name: SEARCH_SERVICE_URL
         value: "http://search-service:8080"
+      - name: ANTICHEAT_SERVICE_URL
+        value: "http://anticheat-service:8080"
 
   userService:
     tag: main
@@ -305,12 +307,14 @@ services:
     env:
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
-      - name: Services__DatabaseService
+      - name: Services__AnticheatDatabase
         value: "http://anticheat-db:8080"
-      - name: Services__MatchDb
+      - name: Services__MatchDatabase
         value: "http://match-db:8080"
       - name: Services__EngineService
         value: "http://engine-service:50056"
+      - name: Services__UserService
+        value: "http://user-service:8081"
       - name: OTEL_SERVICE_NAME
         value: anticheat-service
 
