@@ -7,6 +7,11 @@
      Only enabled where Kafka Connect runs; KAFKA_BOOTSTRAP/SCHEMA_REGISTRY_URL come from kafkaEnv. */}}
 {{- $extraEnv = append $extraEnv (dict "name" "Cdc__Enabled" "value" "true") }}
 {{- end }}
+{{- if .Values.kafka.enabled }}
+{{/* Rating consumer: applies match.events.v1 MatchEnded to player stats/Glicko-2 ratings,
+     replacing the retired RecordMatchResult fan-out (kafka task 08). */}}
+{{- $extraEnv = append $extraEnv (dict "name" "RatingEvents__Enabled" "value" "true") }}
+{{- end }}
 {{ include "maichess.app.deployment" (dict
   "name" "user-service"
   "image" (printf "%s/maichess-user-service:%s" .Values.maichess.imageRegistry (.Values.services.userService.tag | default "main"))
