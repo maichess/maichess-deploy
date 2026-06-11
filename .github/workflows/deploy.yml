@@ -42,6 +42,31 @@ jobs:
               return 1
             }
 
+            # Wait for a rollout, but abort within ~10s of an image-pull failure
+            # instead of blocking the full --timeout. A missing/broken tag
+            # otherwise hangs the deploy for 25m before failing.
+            # $1=namespace $2=label selector
+            rollout_failfast() {
+              local namespace="$1" selector="$2"
+              kubectl rollout status deployment -n "$namespace" -l "$selector" --timeout 25m &
+              local pid=$!
+              while kill -0 "$pid" 2>/dev/null; do
+                local bad
+                bad="$(kubectl get pods -n "$namespace" -l "$selector" \
+                  -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{range .status.containerStatuses[*]}{.state.waiting.reason}{" ("}{.image}{")"}{end}{"\n"}{end}' 2>/dev/null \
+                  | grep -Ei 'ImagePullBackOff|ErrImagePull|InvalidImageName' || true)"
+                if [ -n "$bad" ]; then
+                  echo "=== Image pull failing — aborting rollout early ==="
+                  printf '%s\n' "$bad"
+                  kill "$pid" 2>/dev/null || true
+                  wait "$pid" 2>/dev/null || true
+                  return 1
+                fi
+                sleep 10
+              done
+              wait "$pid"
+            }
+
             cd maichess-deploy
             git fetch origin
             git checkout main
@@ -64,7 +89,7 @@ jobs:
               --no-hooks \
               --timeout 10m
             kubectl rollout restart deployment -n maichess -l "$restart_selector"
-            if ! kubectl rollout status deployment -n maichess -l "$restart_selector" --timeout 25m; then
+            if ! rollout_failfast maichess "$restart_selector"; then
               echo "=== Rollout failed; deployment status ==="
               kubectl get deployment -n maichess -l "$restart_selector" -o wide
               echo "=== Pods for container-update deployments ==="

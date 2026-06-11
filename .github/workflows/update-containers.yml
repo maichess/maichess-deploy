@@ -52,6 +52,32 @@ jobs:
               return 1
             }
 
+            # Wait for a rollout, but abort within ~10s of an image-pull failure
+            # instead of blocking the full --timeout. A missing/broken tag (e.g.
+            # an image that was never published) otherwise hangs the run for 25m
+            # before failing — the opposite of "reliable, frequent tag updates".
+            # $1=namespace $2=label selector
+            rollout_failfast() {
+              local namespace="$1" selector="$2"
+              kubectl rollout status deployment -n "$namespace" -l "$selector" --timeout 25m &
+              local pid=$!
+              while kill -0 "$pid" 2>/dev/null; do
+                local bad
+                bad="$(kubectl get pods -n "$namespace" -l "$selector" \
+                  -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{range .status.containerStatuses[*]}{.state.waiting.reason}{" ("}{.image}{")"}{end}{"\n"}{end}' 2>/dev/null \
+                  | grep -Ei 'ImagePullBackOff|ErrImagePull|InvalidImageName' || true)"
+                if [ -n "$bad" ]; then
+                  echo "=== Image pull failing — aborting rollout early ==="
+                  printf '%s\n' "$bad"
+                  kill "$pid" 2>/dev/null || true
+                  wait "$pid" 2>/dev/null || true
+                  return 1
+                fi
+                sleep 10
+              done
+              wait "$pid"
+            }
+
             # Routine tag updates must not block on bootstrap/reindex hooks.
             # helm ALWAYS waits for post-install/post-upgrade hooks (regardless of
             # --wait), so the replica-set init, topic creation, connector
@@ -81,7 +107,7 @@ jobs:
                 --timeout 10m
               echo "=== rollout restart + status ($namespace) ==="
               kubectl rollout restart deployment -n "$namespace" -l "$restart_selector"
-              if ! kubectl rollout status deployment -n "$namespace" -l "$restart_selector" --timeout 25m; then
+              if ! rollout_failfast "$namespace" "$restart_selector"; then
                 echo "=== Rollout failed; deployment status ==="
                 kubectl get deployment -n "$namespace" -l "$restart_selector" -o wide
                 echo "=== Pods for container-update deployments ==="
