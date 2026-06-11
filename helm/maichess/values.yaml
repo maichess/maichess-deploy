@@ -136,8 +136,6 @@ services:
         value: "http://match-manager-service:8081"
       - name: Engine__Url
         value: "http://engine-service:50056"
-      - name: Services__SocketService
-        value: "http://socket-service:50051"
       - name: OTEL_SERVICE_NAME
         value: match-maker-service
 
@@ -146,13 +144,8 @@ services:
     env:
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
-      # Real-time socket fan-out stays on the proven gRPC path (Socket.BroadcastMatchEvent)
-      # until the Kafka move loop (Phase 3) lands. The socket.outbound.v1 producer is wired
-      # but the Kafka hop is not yet verified end-to-end; routing only the fan-out through
-      # Kafka adds a failure surface with no benefit while the move pipeline is still gRPC.
-      # Flip to "kafka" once socket.outbound consume/produce is confirmed in staging.
-      - name: Socket__Transport
-        value: "grpc"
+      # Real-time fan-out goes over Kafka (socket.outbound.v1, Protobuf); the legacy
+      # Socket.BroadcastMatchEvent gRPC transport was removed in Kafka task 09.
       - name: Services__DatabaseService
         value: "http://match-db:8080"
       - name: Services__MoveValidatorService
@@ -161,12 +154,6 @@ services:
         value: "http://engine-service:50056"
       - name: Services__UserService
         value: "http://user-service:8081"
-      - name: Services__SocketService
-        value: "http://socket-service:50051"
-      # Real-time fan-out goes over Kafka (socket.outbound.v1, Protobuf). The prior
-      # grpc revert (the socket caveat) is resolved — Kafka task 02.
-      - name: Socket__Transport
-        value: "kafka"
       - name: OTEL_SERVICE_NAME
         value: match-manager-service
 
@@ -190,8 +177,6 @@ services:
         value: "http://engine-service:50056"
       - name: Services__MoveValidatorService
         value: "http://move-validator-service:50055"
-      - name: Services__SocketService
-        value: "http://socket-service:50051"
       - name: Services__UserService
         value: "http://user-service:8081"
       - name: Analysis__DefaultBotId
@@ -344,8 +329,9 @@ services:
     tag: main
 
 # =============================================================================
-# Kafka event bus + Schema Registry (event-driven architecture)
-# Templates: kafka.yaml, schema-registry.yaml, kafka-topics-init.yaml, kafka-ui.yaml
+# Kafka event bus (event-driven architecture). Events are raw Protobuf bytes — the
+# Schema Registry was removed in Kafka task 09.
+# Templates: kafka.yaml, kafka-topics-init.yaml, kafka-ui.yaml
 # See maichess-knowledge-base/event-driven-architecture.md
 # =============================================================================
 kafka:
@@ -416,6 +402,19 @@ kafka:
       partitions: 3
       retentionMs: "604800000"     # 7d
       cleanupPolicy: delete
+    # External-game bot-move request/reply loop (Kafka task 09). The tournament-bridge
+    # produces BotMoveRequested to engine.commands.v1 (keyed by request_id) and the
+    # engine replies BotMoveCalculated on engine.events.v1; the bridge correlates the
+    # reply in-flight. Dedicated pair (not match.events.v1) so external requests never
+    # reach the match projector. Transient: replies matter only to an in-flight request.
+    - name: engine.commands.v1
+      partitions: 3
+      retentionMs: "3600000"       # 1h
+      cleanupPolicy: delete
+    - name: engine.events.v1
+      partitions: 3
+      retentionMs: "3600000"       # 1h
+      cleanupPolicy: delete
     - name: user.events.v1
       partitions: 3
       retentionMs: "-1"
@@ -441,17 +440,6 @@ kafka:
       retentionMs: "604800000"     # 7d
       cleanupPolicy: delete
 
-schemaRegistry:
-  image: confluentinc/cp-schema-registry:7.6.1
-  url: "http://schema-registry:8081"
-  compatibility: backward
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
 
 # =============================================================================
 # Change Data Capture — Kafka Connect + Debezium (template: kafka-connect.yaml)

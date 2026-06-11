@@ -4,7 +4,7 @@
 }}
 {{- if .Values.kafkaConnect.enabled }}
 {{/* CDC relay: curate user.events.v1 from the Debezium user.cdc.v1 stream (feature-prompts/10).
-     Only enabled where Kafka Connect runs; KAFKA_BOOTSTRAP/SCHEMA_REGISTRY_URL come from kafkaEnv. */}}
+     Only enabled where Kafka Connect runs; KAFKA_BOOTSTRAP comes from kafkaEnv. */}}
 {{- $extraEnv = append $extraEnv (dict "name" "Cdc__Enabled" "value" "true") }}
 {{- end }}
 {{- if .Values.kafka.enabled }}

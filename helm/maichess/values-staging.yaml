@@ -2,7 +2,8 @@
 global:
   environment: Staging
 
-# Event-driven architecture: Kafka + Schema Registry on in staging only (prod off).
+# Event-driven architecture: Kafka on in staging only (prod off). Events are raw
+# Protobuf bytes — the Schema Registry was removed in Kafka task 09.
 kafka:
   enabled: true
   ui:

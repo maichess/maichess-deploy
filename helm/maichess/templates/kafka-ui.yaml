@@ -26,8 +26,6 @@ spec:
               value: "maichess"
             - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
               value: "kafka:9092"
-            - name: KAFKA_CLUSTERS_0_SCHEMAREGISTRY
-              value: "http://schema-registry:8081"
           ports:
             - containerPort: 8080
               name: http

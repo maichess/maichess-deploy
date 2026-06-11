@@ -5,6 +5,7 @@
     (dict "containerPort" 50056 "name" "grpc")
   )
   "env" .Values.services.engineService.env
+  "extraEnv" (ternary (list (dict "name" "KAFKA_ENABLED" "value" "true")) (list) .Values.kafka.enabled)
   "probePort" 50056
   "resources" .Values.services.engineService.resources
   "affinity" (include "maichess.affinityBurstEligible" . | fromYaml)

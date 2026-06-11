@@ -3,7 +3,6 @@
   "image" (printf "%s/maichess-socket-service:%s" .Values.maichess.imageRegistry (.Values.services.socketService.tag | default "main"))
   "ports" (list
     (dict "containerPort" 3000 "name" "http")
-    (dict "containerPort" 50051 "name" "grpc")
   )
   "env" .Values.services.socketService.env
   "extraEnv" (list
@@ -20,6 +19,5 @@
   "name" "socket-service"
   "ports" (list
     (dict "port" 3000 "targetPort" 3000 "protocol" "TCP" "name" "http")
-    (dict "port" 50051 "targetPort" 50051 "protocol" "TCP" "name" "grpc")
   )
 ) }}

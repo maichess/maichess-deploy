@@ -33,14 +33,12 @@ Common OTEL environment variables — include in every app service
 
 {{/*
 Common Kafka environment variables — include in every app service so producers
-and consumers can reach the broker and the schema registry. Harmless for
-services that do not use Kafka.
+and consumers can reach the broker. Events are raw Protobuf bytes (Kafka task 09
+removed the Schema Registry). Harmless for services that do not use Kafka.
 */}}
 {{- define "maichess.kafkaEnv" -}}
 - name: KAFKA_BOOTSTRAP
   value: {{ .Values.kafka.bootstrap | default "kafka:9092" | quote }}
-- name: SCHEMA_REGISTRY_URL
-  value: {{ .Values.schemaRegistry.url | default "http://schema-registry:8081" | quote }}
 {{- end }}
 
 {{/*
