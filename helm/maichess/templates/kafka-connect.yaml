@@ -139,7 +139,16 @@ spec:
               set -eu
               CONNECT=http://kafka-connect:8083
               echo "Waiting for Kafka Connect REST..."
-              until curl -sf "$CONNECT/connectors" >/dev/null 2>&1; do sleep 5; done
+              # Bounded wait (~5m): an unbounded loop never terminates if Connect
+              # never comes up, so `helm upgrade` blocks on the hook silently until
+              # the release timeout. Fail fast and visibly instead.
+              for i in $(seq 1 60); do
+                if curl -sf "$CONNECT/connectors" >/dev/null 2>&1; then break; fi
+                if [ "$i" -eq 60 ]; then
+                  echo "Kafka Connect REST not reachable after ~5m; failing hook." >&2; exit 1
+                fi
+                sleep 5
+              done
 
               register() {
                 name="$1"; body="$2"

@@ -137,8 +137,17 @@ spec:
             - |
               set -eu
               echo "Waiting for mongod to accept connections..."
-              until mongosh "mongodb://maichess:${MONGO_PASSWORD}@mongo:27017/?authSource=admin&directConnection=true" \
-                --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; do
+              # Bounded wait (~5m): a hook with an unbounded loop never terminates
+              # if mongod is unreachable, so `helm upgrade` blocks on it silently
+              # until the release timeout. Fail fast and visibly instead.
+              for i in $(seq 1 60); do
+                if mongosh "mongodb://maichess:${MONGO_PASSWORD}@mongo:27017/?authSource=admin&directConnection=true" \
+                  --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; then
+                  break
+                fi
+                if [ "$i" -eq 60 ]; then
+                  echo "mongod not reachable after ~5m; failing hook." >&2; exit 1
+                fi
                 sleep 5
               done
               echo "Initiating replica set rs0 (if not already)..."

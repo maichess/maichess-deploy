@@ -51,13 +51,17 @@ jobs:
 
             # Production tracks the `main` branch only. Staging is deployed
             # separately from `dev` via the Update Containers workflow.
-            # No --wait: the rollout restart + rollout status below is the single
-            # readiness gate, so we don't wait for the whole release twice.
+            # No --wait + --no-hooks: helm always blocks on post-upgrade hooks
+            # (e.g. the ES search-reindex Job), which would stall every push-to-
+            # main deploy. Install-time bootstrap (replica set, topics, connectors,
+            # reindex) is owned by helm/scripts/deploy-prod.sh (--wait + hooks);
+            # here the rollout restart + status below is the single readiness gate.
             helm upgrade --install maichess ./helm/maichess \
               -n maichess --create-namespace \
               -f ./helm/maichess/values.yaml \
               -f ./helm/maichess/values-prod.yaml \
               -f /etc/maichess/values-secrets-prod.yaml \
+              --no-hooks \
               --timeout 10m
             kubectl rollout restart deployment -n maichess -l "$restart_selector"
             if ! kubectl rollout status deployment -n maichess -l "$restart_selector" --timeout 25m; then

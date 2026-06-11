@@ -46,7 +46,10 @@ services:
     enabled: true
   searchService:
     enabled: true
-    reindex: true
+    # On-demand only; see values-staging.yaml. A permanent `true` makes the
+    # blocking search-reindex hook stall every deploy. Trigger via the Update
+    # Containers workflow's `reindex` input when a rebuild is actually needed.
+    reindex: false
 
 elasticsearch:
   enabled: true

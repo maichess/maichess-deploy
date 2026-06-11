@@ -45,8 +45,7 @@ secrets:
 
 # Staging runs the `nightly` images built from each repo's `dev` branch
 # (prod uses `main`). Autoscaling mirrors prod for burst-eligible services.
-# analysisService / botArenaService have no dedicated image repo yet, so they
-# are left on the default tag.
+# botArenaService has no nightly `dev` build yet, so it is left on the default tag.
 services:
   client:
     tag: nightly
@@ -93,6 +92,7 @@ services:
   tournamentBridgeService:
     tag: nightly
   analysisService:
+    tag: nightly
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -110,7 +110,11 @@ services:
   searchService:
     enabled: true
     tag: nightly
-    reindex: true
+    # Reindex is a deliberate, on-demand action — NOT every deploy. search-reindex
+    # is a blocking post-upgrade hook; leaving it on makes a full Elasticsearch
+    # backfill gate (and stall) every container update. Trigger a rebuild via the
+    # Update Containers workflow's `reindex` input instead.
+    reindex: false
 
 # Note: staging database ephemeral storage not yet implemented
 # (custom StatefulSets always use PVCs; for staging, delete the namespace to reset)

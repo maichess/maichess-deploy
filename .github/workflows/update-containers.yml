@@ -12,6 +12,13 @@ on:
           - both
           - prod
           - staging
+      reindex:
+        description: >-
+          Rebuild the Elasticsearch search index. Runs the blocking
+          search-reindex hook; leave off for routine tag updates.
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   update:
@@ -45,18 +52,34 @@ jobs:
               return 1
             }
 
-            # No --wait on helm: rollout restart + rollout status is the single
-            # readiness gate, so we don't wait for the release twice.
+            # Routine tag updates must not block on bootstrap/reindex hooks.
+            # helm ALWAYS waits for post-install/post-upgrade hooks (regardless of
+            # --wait), so the replica-set init, topic creation, connector
+            # registration and ES reindex Jobs gate (and can stall) every upgrade.
+            # Those are install-time concerns owned by helm/scripts/deploy-*.sh
+            # (run with --wait + hooks). Here --no-hooks keeps tag rollouts fast
+            # and reliable; the rollout status below is the single readiness gate.
+            # The `reindex` input re-enables hooks for a deliberate ES rebuild.
+            HOOK_ARGS="--no-hooks"
+            REINDEX_ARGS=""
+            if [[ "${{ inputs.reindex }}" == "true" ]]; then
+              HOOK_ARGS=""
+              REINDEX_ARGS="--set services.searchService.reindex=true"
+            fi
+
             deploy_env() {
               local release="$1" namespace="$2" values="$3" secrets="$4"
               local restart_selector="maichess.io/container-update=true"
               helm_dep_update
+              echo "=== helm upgrade $release (hooks: ${HOOK_ARGS:-enabled}) ==="
               helm upgrade --install "$release" ./helm/maichess \
                 -n "$namespace" --create-namespace \
                 -f ./helm/maichess/values.yaml \
                 -f "$values" \
                 -f "$secrets" \
+                $HOOK_ARGS $REINDEX_ARGS \
                 --timeout 10m
+              echo "=== rollout restart + status ($namespace) ==="
               kubectl rollout restart deployment -n "$namespace" -l "$restart_selector"
               if ! kubectl rollout status deployment -n "$namespace" -l "$restart_selector" --timeout 25m; then
                 echo "=== Rollout failed; deployment status ==="
