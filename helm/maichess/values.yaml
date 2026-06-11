@@ -132,6 +132,10 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        # cgroup v2 + containerd may report ProcessorCount=1 for a 500m CPU limit,
+        # which starves the ThreadPool under concurrency. Set a floor explicitly.
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: MatchManager__Url
@@ -153,8 +157,6 @@ services:
       # but the Kafka hop is not yet verified end-to-end; routing only the fan-out through
       # Kafka adds a failure surface with no benefit while the move pipeline is still gRPC.
       # Flip to "kafka" once socket.outbound consume/produce is confirmed in staging.
-      - name: Socket__Transport
-        value: "grpc"
       - name: Services__DatabaseService
         value: "http://match-db:8080"
       - name: Services__MoveValidatorService
@@ -165,8 +167,6 @@ services:
         value: "http://user-service:8081"
       - name: Services__SocketService
         value: "http://socket-service:50051"
-      # Real-time fan-out goes over Kafka (socket.outbound.v1, Protobuf). The prior
-      # grpc revert (the socket caveat) is resolved — Kafka task 02.
       - name: Socket__Transport
         value: "kafka"
       - name: OTEL_SERVICE_NAME
@@ -184,6 +184,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
@@ -210,11 +212,13 @@ services:
         cpu: 100m
         memory: 64Mi
       limits:
-        cpu: 500m
+        cpu: "1"
         memory: 128Mi
     autoscaling:
       enabled: false
     env:
+      - name: JAVA_TOOL_OPTIONS
+        value: "-XX:ActiveProcessorCount=4"
       - name: GRPC_PORT
         value: "50055"
       - name: OTEL_SERVICE_NAME
@@ -227,13 +231,16 @@ services:
         cpu: 200m
         memory: 512Mi
       limits:
-        cpu: "1"
+        cpu: "2"
         memory: 1Gi
     autoscaling:
       enabled: false
     env:
       - name: JAVA_TOOL_OPTIONS
-        value: "-XX:MaxRAMPercentage=75.0"
+        # ActiveProcessorCount overrides JVM container-awareness so the ZIO fiber
+        # executor and Netty gRPC event loop use multiple threads even when the
+        # cgroup CPU quota reports < 2 available processors on a burst node.
+        value: "-XX:MaxRAMPercentage=75.0 -XX:ActiveProcessorCount=4"
       - name: GRPC_PORT
         value: "50056"
       - name: OTEL_SERVICE_NAME
@@ -251,6 +258,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
