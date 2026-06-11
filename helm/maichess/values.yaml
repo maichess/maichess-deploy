@@ -132,6 +132,10 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        # cgroup v2 + containerd may report ProcessorCount=1 for a 500m CPU limit,
+        # which starves the ThreadPool under concurrency. Set a floor explicitly.
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: MatchManager__Url
@@ -171,6 +175,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
@@ -195,11 +201,13 @@ services:
         cpu: 100m
         memory: 64Mi
       limits:
-        cpu: 500m
+        cpu: "1"
         memory: 128Mi
     autoscaling:
       enabled: false
     env:
+      - name: JAVA_TOOL_OPTIONS
+        value: "-XX:ActiveProcessorCount=4"
       - name: GRPC_PORT
         value: "50055"
       - name: OTEL_SERVICE_NAME
@@ -212,13 +220,16 @@ services:
         cpu: 200m
         memory: 512Mi
       limits:
-        cpu: "1"
+        cpu: "2"
         memory: 1Gi
     autoscaling:
       enabled: false
     env:
       - name: JAVA_TOOL_OPTIONS
-        value: "-XX:MaxRAMPercentage=75.0"
+        # ActiveProcessorCount overrides JVM container-awareness so the ZIO fiber
+        # executor and Netty gRPC event loop use multiple threads even when the
+        # cgroup CPU quota reports < 2 available processors on a burst node.
+        value: "-XX:MaxRAMPercentage=75.0 -XX:ActiveProcessorCount=4"
       - name: GRPC_PORT
         value: "50056"
       - name: OTEL_SERVICE_NAME
@@ -236,6 +247,8 @@ services:
     autoscaling:
       enabled: false
     env:
+      - name: DOTNET_THREADPOOL_MINTHREADS
+        value: "4"
       - name: ASPNETCORE_ENVIRONMENT
         value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
