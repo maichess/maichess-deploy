@@ -1,8 +1,8 @@
 {{/*
 maichess-anticheat-service — consumes match.events / MatchEnded, scores games
 (engine correlation + statistical, pre-move aware), flags players, and emits
-cheat.events.v1. Repo created per feature-prompts/14. Kafka env (KAFKA_BOOTSTRAP /
-SCHEMA_REGISTRY_URL) is injected by the deployment macro when kafka.enabled; the
+cheat.events.v1. Repo created per feature-prompts/14. Kafka env (KAFKA_BOOTSTRAP)
+is injected by the deployment macro when kafka.enabled; the
 match.events consumer + cheat.events producer + post-game analysis worker are
 themselves gated on Kafka__Enabled, set only when kafka.enabled (with Kafka off,
 the Dev REST surface still serves cases from anticheat-db). Engine must be reachable
