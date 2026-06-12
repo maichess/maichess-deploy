@@ -1,0 +1,118 @@
+# =============================================================================
+# k3d VPS mirror (uni-vps, 141.37.123.120) — single node, plain HTTP, no domains.
+#
+# Strategy: the browser only needs two reachable hosts — the client origin and
+# `sockets.<client-host>` (derived at runtime by lib/hooks/useSocket.ts). All REST
+# is proxied server-side through the Next.js /api routes to in-cluster services, so
+# no other host is browser-facing. We use sslip.io so `sockets.<base>` resolves to
+# the same VPS IP with zero per-client DNS config. Plain HTTP (no cert-manager):
+# auth cookies are non-Secure unless NODE_ENV is exactly lowercase "production"
+# (it is "Production" here), and client+sockets share the sslip.io registrable
+# domain so the sameSite=lax cookie still reaches the socket host.
+#
+# Deploy: helm upgrade --install maichess . -n maichess --create-namespace \
+#           -f values.yaml -f values-vps.yaml -f values-secrets-vps.yaml --wait
+# Release name MUST be `maichess` (values.yaml datasource/scrape names assume it).
+# =============================================================================
+
+global:
+  # Keep capital-P so auth-service's `NODE_ENV === 'production'` Secure-cookie
+  # check stays false (plain HTTP). Do not lowercase this.
+  environment: Production
+
+certManager:
+  skipClusterIssuer: true   # no cert-manager installed; HTTP-only mirror
+
+ingress:
+  tls: false   # plain HTTP via k3s Traefik; skips cert-manager + the TLS IngressRoute
+  clientDomain: 141.37.123.120.sslip.io
+  usersDomain: users.141.37.123.120.sslip.io
+  authDomain: auth.141.37.123.120.sslip.io
+  socketsDomain: sockets.141.37.123.120.sslip.io
+  matchmakerDomain: matchmaker.141.37.123.120.sslip.io
+  matchmanagerDomain: matchmanager.141.37.123.120.sslip.io
+  analysisDomain: analysis.141.37.123.120.sslip.io
+  arenaDomain: bot-arena.141.37.123.120.sslip.io
+  grafanaDomain: grafana.141.37.123.120.sslip.io
+  prometheusDomain: prometheus.141.37.123.120.sslip.io
+  # sslip.io treats every dotted label before the IP as a subdomain, so a
+  # `api.topology.<ip>.sslip.io` style host still resolves — kept dotted here.
+  topologyApiDomain: api.topology.141.37.123.120.sslip.io
+  topologyDomain: topology.141.37.123.120.sslip.io
+  tournamentDomain: tournament.141.37.123.120.sslip.io
+  tournamentBridgeDomain: tournament-bridge.141.37.123.120.sslip.io
+
+secrets:
+  # Cookie valid for the base host AND sockets.<base> (sibling subdomain).
+  cookieDomain: "141.37.123.120.sslip.io"
+  corsOrigin: "http://141.37.123.120.sslip.io"
+  topologyWsUrl: "ws://api.topology.141.37.123.120.sslip.io/ws"
+
+# Use `nightly` (dev-branch) images — this chart and the local service source are
+# the event-driven generation (socket fan-out via Kafka; match-manager/-maker no
+# longer call socket-service over gRPC). The stable `:main` images predate Kafka
+# task 09 and crash with "Services:SocketService is not configured". Mirror the
+# staging tag scheme. bot-arena has no nightly build, so it stays on `main`
+# (its :main image runs fine and needs no SocketService config).
+services:
+  client:
+    tag: nightly
+  userService:
+    tag: nightly
+  authService:
+    tag: nightly
+  socketService:
+    tag: nightly
+  matchMakerService:
+    tag: nightly
+  matchManagerService:
+    tag: nightly
+  moveValidatorService:
+    tag: nightly
+  engineService:
+    tag: nightly
+  analysisService:
+    tag: nightly
+  databaseService:
+    tag: nightly
+  topologyService:
+    tag: nightly
+    # k3d nodes run containerd, not Docker — there is no /var/run/docker.sock to
+    # mount (the Socket-type hostPath check wedges the pod in ContainerCreating).
+    # Disable it; topology-service degrades to span-only graph discovery.
+    dockerSocket: false
+  topologyClient:
+    tag: nightly
+  tournamentBridgeService:
+    tag: nightly
+
+# Event bus is required for the core match flow (socket fan-out via
+# socket.outbound.v1). CDC/search/anticheat optional stack stays OFF to fit 11Gi.
+# The VPS CPU (QEMU Virtual CPU 2.5+) has no AVX, so mongo:5.0+ dies with
+# "Illegal instruction". 4.4 is the last AVX-free MongoDB release.
+mongo:
+  image: mongo:4.4
+
+kafka:
+  enabled: true
+  ui:
+    enabled: false
+kafkaConnect:
+  enabled: false
+elasticsearch:
+  enabled: false
+
+# Ephemeral observability — no PVCs (keep disk + memory light on the VPS).
+grafana:
+  persistence:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: "http://grafana.141.37.123.120.sslip.io"
+tempo:
+  persistence:
+    enabled: false
+prometheus:
+  server:
+    persistentVolume:
+      enabled: false

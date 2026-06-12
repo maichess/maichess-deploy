@@ -1,3 +1,13 @@
+{{- /*
+  The docker-sock mount lets topology-service inspect maichess-* Docker
+  containers for live container-running status and Compose-style graph
+  discovery. It only works where the node exposes a real Docker socket
+  (Compose / Docker-shim hosts). On a containerd node (e.g. the k3d VPS mirror)
+  /var/run/docker.sock is absent and the Socket-type hostPath check fails,
+  wedging the pod in ContainerCreating. Set services.topologyService.dockerSocket
+  to false there; the service degrades to span-only graph discovery (OTel spans
+  + servicegraph metrics).
+*/ -}}
 {{ include "maichess.app.deployment" (dict
   "name" "topology-service"
   "image" (printf "%s/maichess-topology-service:%s" .Values.maichess.imageRegistry (.Values.services.topologyService.tag | default "main"))
@@ -9,14 +19,18 @@
     (dict "name" "NODE_ENV" "value" .Values.global.environment)
   )
   "probePort" 3001
-  "volumeMounts" (list
-    (dict "name" "otel-spans" "mountPath" "/var/log/otel")
-    (dict "name" "docker-sock" "mountPath" "/var/run/docker.sock" "readOnly" true)
-  )
-  "volumes" (list
-    (dict "name" "otel-spans" "persistentVolumeClaim" (dict "claimName" "otel-spans"))
-    (dict "name" "docker-sock" "hostPath" (dict "path" "/var/run/docker.sock" "type" "Socket"))
-  )
+  "volumeMounts" (concat
+    (list (dict "name" "otel-spans" "mountPath" "/var/log/otel"))
+    (ternary
+      (list (dict "name" "docker-sock" "mountPath" "/var/run/docker.sock" "readOnly" true))
+      (list)
+      (ne .Values.services.topologyService.dockerSocket false)))
+  "volumes" (concat
+    (list (dict "name" "otel-spans" "persistentVolumeClaim" (dict "claimName" "otel-spans")))
+    (ternary
+      (list (dict "name" "docker-sock" "hostPath" (dict "path" "/var/run/docker.sock" "type" "Socket")))
+      (list)
+      (ne .Values.services.topologyService.dockerSocket false)))
   "affinity" (include "maichess.affinityPrimary" . | fromYaml)
   "Release" .Release
   "Chart" .Chart

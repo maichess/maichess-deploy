@@ -3,9 +3,12 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: maichess-ingress
+  {{- if .Values.ingress.tls }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+  {{- end }}
 spec:
+  {{- if .Values.ingress.tls }}
   tls:
     - hosts:
         - {{ .Values.ingress.clientDomain }}
@@ -23,6 +26,7 @@ spec:
         {{- end }}
         - {{ .Values.ingress.tournamentBridgeDomain }}
       secretName: maichess-tls
+  {{- end }}
   rules:
     - host: {{ .Values.ingress.clientDomain }}
       http:
@@ -152,14 +156,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: maichess-observability-ingress
+  {{- if .Values.ingress.tls }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+  {{- end }}
 spec:
+  {{- if .Values.ingress.tls }}
   tls:
     - hosts:
         - {{ .Values.ingress.grafanaDomain }}
         - {{ .Values.ingress.prometheusDomain }}
       secretName: maichess-observability-tls
+  {{- end }}
   rules:
     - host: {{ .Values.ingress.grafanaDomain }}
       http:
@@ -181,6 +189,7 @@ spec:
                 name: maichess-prometheus-server
                 port:
                   number: 80
+{{- if .Values.ingress.tls }}
 ---
 # Prometheus remote-write endpoint with basic auth
 apiVersion: traefik.io/v1alpha1
@@ -208,4 +217,5 @@ spec:
           port: 80
   tls:
     certResolver: letsencrypt
+{{- end }}
 {{- end }}

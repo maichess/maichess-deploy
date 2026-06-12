@@ -24,7 +24,7 @@ spec:
       # with the right perms before mongod starts.
       initContainers:
         - name: keyfile-perms
-          image: mongo:7
+          image: {{ .Values.mongo.image | default "mongo:7" }}
           command:
             - sh
             - -c
@@ -37,7 +37,7 @@ spec:
       {{- end }}
       containers:
         - name: mongodb
-          image: mongo:7
+          image: {{ .Values.mongo.image | default "mongo:7" }}
           {{- if .Values.kafkaConnect.enabled }}
           # Single-member replica set so an oplog exists for Debezium CDC
           # (change-data-capture.md). --keyFile enables the internal auth that a
@@ -124,7 +124,7 @@ spec:
         {{- include "maichess.affinityPrimary" . | nindent 8 }}
       containers:
         - name: rs-init
-          image: mongo:7
+          image: {{ .Values.mongo.image | default "mongo:7" }}
           env:
             - name: MONGO_PASSWORD
               valueFrom:

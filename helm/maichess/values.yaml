@@ -33,6 +33,9 @@ secrets:
 # =============================================================================
 ingress:
   enabled: true
+  # TLS via cert-manager/letsencrypt. Set false for domain-less/internal deploys
+  # (e.g. the k3d VPS mirror) to serve plain HTTP with no cert-manager dependency.
+  tls: true
   clientDomain: maichess.berger-software.com
   usersDomain: users.maichess.berger-software.com
   authDomain: auth.maichess.berger-software.com
@@ -505,6 +508,11 @@ elasticsearch:
 # PostgreSQL: postgres:16, MongoDB: mongo:7, Redis: redis:7-alpine
 # Config is in templates/postgres.yaml, mongo.yaml, redis.yaml
 # =============================================================================
+
+# MongoDB image. mongo:5.0+ requires a CPU with AVX; override to mongo:4.4 on hosts
+# without it (e.g. the QEMU-based k3d VPS mirror — see values-vps.yaml).
+mongo:
+  image: mongo:7
 
 # Shared Redis cache (Match Maker queue + Match Manager finished-match read
 # model). All key namespaces are rebuildable/transient, so eviction runs
