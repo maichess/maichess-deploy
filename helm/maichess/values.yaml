@@ -514,9 +514,17 @@ elasticsearch:
 mongo:
   image: mongo:7
 
-# Shared Redis cache (Match Maker queue + Match Manager finished-match read
-# model). All key namespaces are rebuildable/transient, so eviction runs
-# allkeys-lru once maxmemory is reached. See caching-and-read-models.md.
+# Shared Redis cache. Key namespaces (all rebuildable/transient, so eviction runs
+# allkeys-lru once maxmemory is reached — see caching-and-read-models.md):
+#   - Match Maker queue (queue:*, queue_entry:*)
+#   - Match Manager finished-match read model (match:*, matches:user:*)
+#   - Match Manager user replica (user:*) + leaderboard ZSET (leaderboard:rating),
+#     both rebuildable by replaying user.events.v1
+#   - Match Manager live match read model (match:live:*)
+#   - Analysis service analysis_results L1 (analysis:{botId}:{fen}), rebuildable
+#     from the Mongo analysis_results collection
+# leaderboard:rating and analysis:* are drop-safe: flushing them just rebuilds from
+# the topic / Mongo on next write or replay.
 redis:
   maxmemory: "512mb"
 
