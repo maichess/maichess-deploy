@@ -1,3 +1,10 @@
+{{/*
+maichess-bot-arena-service — orchestrates bot-vs-bot setups and tournaments.
+Since Kafka task 18 it reacts to match completions by consuming match.events.v1
+(MatchEnded, consumer group "bot-arena-completion") instead of polling
+match-manager over gRPC. KAFKA_BOOTSTRAP is injected by the deployment macro when
+kafka.enabled; the consumer group is a code constant, so no extra env is needed.
+*/}}
 {{ include "maichess.app.deployment" (dict
   "name" "bot-arena-service"
   "image" (printf "%s/maichess-bot-arena-service:%s" .Values.maichess.imageRegistry (.Values.services.botArenaService.tag | default "main"))

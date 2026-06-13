@@ -256,8 +256,6 @@ services:
         value: "$(ENVIRONMENT)"
       - name: Services__DatabaseService
         value: "http://arena-db:8080"
-      - name: Services__MatchManager
-        value: "http://match-manager-service:8081"
       - name: Services__Engine
         value: "http://engine-service:50056"
       - name: Services__MatchMaker
