@@ -191,7 +191,7 @@ services:
       - name: Services__UserService
         value: "http://user-service:8081"
       - name: Analysis__DefaultBotId
-        value: "blitz"
+        value: "knowledge_classical"
       - name: Analysis__DefaultLineCount
         value: "3"
       - name: OTEL_SERVICE_NAME
