@@ -1,0 +1,40 @@
+{{/*
+insights-db — a DatabaseService instance (Mongo) for the insights domain. Same
+image as user-db / match-db / arena-db / anticheat-db; stores the materialized
+insights_* collections (openings / endgames / positions / tricky / summary / jobs)
+in its own database in the shared Mongo. The .NET insights-service reads these via
+database-service gRPC; the Scala Spark module writes them via the Spark Mongo
+connector (the one documented write-path exception). The "insights" migration set
+is added to maichess-database-service in the insights program (tasks 03–05).
+Enable together with the insights service: insights.enabled=true.
+*/}}
+{{- if .Values.insights.enabled }}
+{{ include "maichess.app.deployment" (dict
+  "name" "insights-db"
+  "image" (printf "%s/maichess-database-service:%s" .Values.maichess.imageRegistry (.Values.services.databaseService.tag | default "main"))
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+  )
+  "env" (list
+    (dict "name" "OTEL_SERVICE_NAME" "value" "insights-db")
+    (dict "name" "Database__Adapter" "value" "mongo")
+    (dict "name" "Database__ReadOnly" "value" "false")
+    (dict "name" "Database__Migrations" "value" "insights")
+  )
+  "extraEnv" (list
+    (dict "name" "ASPNETCORE_ENVIRONMENT" "value" .Values.global.environment)
+    (dict "name" "Database__ConnectionString" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "mongo-connection-string")))
+  )
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "insights-db"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+  )
+) }}
+{{- end }}

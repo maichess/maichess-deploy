@@ -1,0 +1,45 @@
+{{- if .Values.sparkOperator.enabled }}
+# Spark blast-radius controls (knowledge/operations/spark-and-minio.md, "live
+# isolation"). The cap is maichess-mega CPU, which we bound two ways:
+#
+#  1. A low PriorityClass — Spark driver/executors are preempted/throttled before
+#     any live service when the node is under pressure. Spark job manifests (tasks
+#     03/04) set priorityClassName to this class.
+#  2. A namespace ResourceQuota *scoped to that PriorityClass* — so it caps only
+#     the Spark workload (driver + executors), not the stateless replicas that also
+#     run on maichess-mega. Keeps Spark within ≈ the configured core/memory budget.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.insights.spark.priorityClassName | default "insights-low-priority" }}
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insights-spark
+# Negative → below every normally-scheduled workload (default global priority is 0),
+# so the scheduler evicts Spark first under contention.
+value: {{ .Values.insights.spark.priorityValue | default -10 }}
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Low priority for insights Spark driver/executor pods; preempted before live services."
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: insights-spark-quota
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insights-spark
+spec:
+  hard:
+    requests.cpu: {{ .Values.insights.spark.quota.requestsCpu | default "12" | quote }}
+    limits.cpu: {{ .Values.insights.spark.quota.limitsCpu | default "12" | quote }}
+    requests.memory: {{ .Values.insights.spark.quota.requestsMemory | default "20Gi" | quote }}
+    limits.memory: {{ .Values.insights.spark.quota.limitsMemory | default "20Gi" | quote }}
+  # Apply only to pods using the Spark low-priority class.
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - {{ .Values.insights.spark.priorityClassName | default "insights-low-priority" }}
+{{- end }}

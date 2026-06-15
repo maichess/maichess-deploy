@@ -23,3 +23,12 @@ dependencies:
     version: "~0.115"
     repository: https://open-telemetry.github.io/opentelemetry-helm-charts
     alias: otelCollector
+  # --- Insights / Spark ---
+  # Kubeflow Spark Operator: reconciles SparkApplication / ScheduledSparkApplication
+  # CRDs into driver/executor pods. Gated to staging (insights program). Configured
+  # under the `sparkOperator` values key (node-pinned to maichess-mega, low priority).
+  - name: spark-operator
+    version: "2.1.1"
+    repository: https://kubeflow.github.io/spark-operator
+    alias: sparkOperator
+    condition: sparkOperator.enabled

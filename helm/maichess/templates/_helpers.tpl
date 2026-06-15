@@ -88,3 +88,15 @@ operator: Equal
 value: burst
 effect: NoSchedule
 {{- end }}
+
+{{/*
+Node selector that hard-pins to the compute node (maichess-mega). Both `ubuntu`
+(the hub) and maichess-mega share maichess/role=primary, and the scheduler spreads
+stateless pods across both — so role-based affinity is NOT enough to keep heavy
+insights/Spark/MinIO work off the hub's stateful node. Pin by hostname instead.
+Override insights.computeNodeHostname if the mega node is renamed.
+Usage: nodeSelector: {{ include "maichess.nodeSelectorCompute" . | nindent 8 }}
+*/}}
+{{- define "maichess.nodeSelectorCompute" -}}
+kubernetes.io/hostname: {{ .Values.insights.computeNodeHostname | default "vps-771074" | quote }}
+{{- end }}

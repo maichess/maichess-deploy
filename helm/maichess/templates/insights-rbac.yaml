@@ -1,0 +1,50 @@
+{{- if .Values.sparkOperator.enabled }}
+# RBAC for the insights control plane. The .NET insights-service runs under the
+# `insights-service` ServiceAccount and uses the C# Kubernetes client to submit and
+# monitor SparkApplication / ScheduledSparkApplication custom resources (the Spark
+# driver pods themselves run under the operator-managed `spark` ServiceAccount, see
+# values: sparkOperator.spark.serviceAccount). Namespaced — insights work is
+# confined to the release namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: insights-service
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insights-service
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: insights-spark-submitter
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insights-service
+rules:
+  # Create + track Spark jobs (the operator reconciles these into driver/executors).
+  - apiGroups: ["sparkoperator.k8s.io"]
+    resources: ["sparkapplications", "scheduledsparkapplications"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["sparkoperator.k8s.io"]
+    resources: ["sparkapplications/status", "scheduledsparkapplications/status"]
+    verbs: ["get", "list", "watch"]
+  # Read driver/executor pod state + logs for job progress in the control plane.
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: insights-spark-submitter
+  labels:
+    {{- include "maichess.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insights-service
+subjects:
+  - kind: ServiceAccount
+    name: insights-service
+roleRef:
+  kind: Role
+  name: insights-spark-submitter
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

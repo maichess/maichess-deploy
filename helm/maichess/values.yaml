@@ -27,6 +27,10 @@ secrets:
   topologyWsUrl: "wss://api.topology.maichess.berger-software.com/ws"
   # Standalone tournament-server JWT signing key — not related to maichess auth.
   tournamentJwtSecret: "CHANGE_ME"
+  # MinIO data-lake root credentials (insights program). Only used when
+  # minio.enabled; override with strong random values in values-secrets-*.yaml.
+  minioRootUser: "maichess"
+  minioRootPassword: "CHANGE_ME"
 
 # =============================================================================
 # Ingress (all external-facing domains)
@@ -322,6 +326,33 @@ services:
       - name: OTEL_SERVICE_NAME
         value: anticheat-service
 
+  # maichess-insights-service (.NET control plane + query API for the insights
+  # program). Submits/monitors SparkApplication CRDs (runs under the
+  # `insights-service` ServiceAccount, see templates/insights-rbac.yaml) and reads
+  # the materialized insights_* collections via insights-db. Gated with
+  # insights.enabled. Image lands in tasks 05/06; disabled until then.
+  insightsService:
+    enabled: false
+    tag: main
+    resources:
+      requests:
+        cpu: 150m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "$(ENVIRONMENT)"
+      - name: Services__InsightsDatabase
+        value: "http://insights-db:8080"
+      - name: Services__EngineService
+        value: "http://engine-service:50056"
+      - name: Minio__Endpoint
+        value: "http://minio:9000"
+      - name: OTEL_SERVICE_NAME
+        value: insights-service
+
   topologyService:
     tag: main
     env:
@@ -452,6 +483,13 @@ kafka:
       partitions: 3
       retentionMs: "-1"
       cleanupPolicy: compact
+    # Insights Spark job lifecycle (insights program). Emitted by insights-service
+    # as a SparkApplication advances; relayed to socket.outbound.v1 for live job
+    # progress. Transient — only matters to an in-flight job's watcher.
+    - name: insights.events.v1
+      partitions: 3
+      retentionMs: "3600000"       # 1h
+      cleanupPolicy: delete
     # CDC raw change streams (feature-prompts/10, /13). Internal — not a consumer
     # contract. Bounded retention; the curated user.events / ES indexer read these.
     - name: user.cdc.v1
@@ -505,6 +543,96 @@ elasticsearch:
     limits:
       cpu: "1"
       memory: 2Gi
+
+# =============================================================================
+# Insights & Spark analytics (template: minio.yaml, insights-db.yaml,
+# insights-rbac.yaml, spark-resource-governance.yaml; subchart: sparkOperator).
+# See knowledge/architecture/insights-and-spark.md and
+# knowledge/operations/spark-and-minio.md. Staging-gated like search/anticheat.
+# =============================================================================
+
+# MinIO S3-compatible data lake (template: minio.yaml). Hard-pinned to
+# maichess-mega; buckets insights-raw / insights-parsed / insights-agg.
+minio:
+  enabled: false
+  image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+  mcImage: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+  # Sized for filtered/sampled corpora. A full Lichess month transiently needs
+  # ~270Gi (raw + decompress scratch + Parquet) — raise for full-month ingestion
+  # and ideally give MinIO its own disk (spark-and-minio.md, storage sizing).
+  storage: 100Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+# Insights control-plane / Spark governance knobs shared by our own templates
+# (insights-db, RBAC, PriorityClass + ResourceQuota). The Spark Operator subchart
+# is configured separately under `sparkOperator` below.
+insights:
+  # Gates insights-db (the Mongo store) and the insights-service deployment (task
+  # 05). Kept OFF until the database-service "insights" migration set exists —
+  # enabling it earlier crash-loops insights-db on an unknown migration domain. The
+  # Spark governance + submitter RBAC gate on sparkOperator.enabled instead, so the
+  # operator + a sample job can be validated on staging before the service ships.
+  enabled: false
+  # Hostname of the compute node (maichess-mega) that MinIO + Spark hard-pin to.
+  # Both the hub and mega share maichess/role=primary, so we pin by hostname to
+  # keep heavy work off the hub's stateful node. Update if the node is renamed.
+  computeNodeHostname: vps-771074
+  spark:
+    # Spark driver/executor pods (authored as SparkApplication manifests in tasks
+    # 03/04) set this PriorityClass so the ResourceQuota below scopes to them and
+    # k8s preempts them before any live service.
+    priorityClassName: insights-low-priority
+    priorityValue: -10
+    # Namespace ResourceQuota caps for the Spark workload (scoped to the class
+    # above). ≈ ≤12 cores / ~20Gi leaves headroom for the stateless replicas that
+    # also run on maichess-mega.
+    quota:
+      requestsCpu: "12"
+      limitsCpu: "12"
+      requestsMemory: 20Gi
+      limitsMemory: 20Gi
+    # Opt-in burst: let the map-only parse stage tolerate the flost burst node for
+    # large corpora (shuffle/reduce stays local on mega). Consumed by the Spark job
+    # manifests in tasks 03/04. Default off — see spark-and-minio.md (opt-in only).
+    flostBurst:
+      enabled: false
+      # Toleration the parse-stage executors carry when flostBurst is enabled.
+      toleration:
+        key: maichess/role
+        operator: Equal
+        value: burst
+        effect: NoSchedule
+
+# Kubeflow Spark Operator subchart (Chart.yaml dependency, alias `sparkOperator`).
+# Reconciles SparkApplication / ScheduledSparkApplication CRDs. Operator pods are
+# pinned to maichess-mega; the operator creates the `spark` ServiceAccount used by
+# driver pods. Keep nodeSelector hostnames in sync with insights.computeNodeHostname.
+sparkOperator:
+  enabled: false
+  # The camelCase alias would otherwise leak into resource names
+  # (maichess-...-sparkOperator-controller) — invalid RFC1123 (uppercase). Pin a
+  # lowercase fullname.
+  fullnameOverride: spark-operator
+  controller:
+    nodeSelector:
+      kubernetes.io/hostname: vps-771074
+  webhook:
+    nodeSelector:
+      kubernetes.io/hostname: vps-771074
+  spark:
+    # SparkApplications run in the release namespace (prod: maichess; staging
+    # overrides to maichess-staging in values-staging.yaml).
+    jobNamespaces:
+      - maichess
+    serviceAccount:
+      create: true
+      name: spark
 
 # =============================================================================
 # Databases (custom templates using official images, matching Docker Compose)

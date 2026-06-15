@@ -18,6 +18,23 @@ kafkaConnect:
 elasticsearch:
   enabled: true
 
+# Insights data lake + Spark execution platform on in staging only (insights
+# program). MinIO + the Spark Operator (with its RBAC, PriorityClass + capped
+# ResourceQuota) come up here for validation; insights-db and the insights-service
+# stay off until the database-service "insights" migration set + the service image
+# exist (tasks 05/06), since insights-db crash-loops on an unknown migration.
+minio:
+  enabled: true
+  # Staging shares maichess-mega's disk; keep the lake modest (sampled corpora).
+  storage: 40Gi
+
+sparkOperator:
+  enabled: true
+  spark:
+    # SparkApplications run in the staging namespace.
+    jobNamespaces:
+      - maichess-staging
+
 ingress:
   clientDomain: staging.maichess.berger-software.com
   usersDomain: users.staging.maichess.berger-software.com
