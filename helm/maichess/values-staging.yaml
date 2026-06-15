@@ -45,7 +45,6 @@ secrets:
 
 # Staging runs the `nightly` images built from each repo's `dev` branch
 # (prod uses `main`). Autoscaling mirrors prod for burst-eligible services.
-# botArenaService has no nightly `dev` build yet, so it is left on the default tag.
 services:
   client:
     tag: nightly
@@ -99,6 +98,7 @@ services:
       maxReplicas: 2
       targetCPU: 75
   botArenaService:
+    tag: nightly
     autoscaling:
       enabled: true
       minReplicas: 1

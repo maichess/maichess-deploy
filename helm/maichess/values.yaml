@@ -260,6 +260,11 @@ services:
         value: "http://engine-service:50056"
       - name: Services__MatchMaker
         value: "http://match-maker-service:8080"
+      # Required by the :main image (pre-task-18 gRPC poll of match-manager). The
+      # dev/:nightly image dropped this dependency (Kafka match.events consumer),
+      # so it is ignored there but keeps the :main prod image from crashing.
+      - name: Services__MatchManager
+        value: "http://match-manager-service:8081"
       - name: OTEL_SERVICE_NAME
         value: bot-arena-service
 
