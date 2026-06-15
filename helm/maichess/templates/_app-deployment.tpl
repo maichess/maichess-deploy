@@ -27,6 +27,21 @@ metadata:
     maichess.io/container-update: "true"
 spec:
   replicas: {{ .replicas | default 1 }}
+  # Zero-surge rolling update. The k8s default (maxSurge 25% / maxUnavailable 25%)
+  # rounds maxUnavailable DOWN to 0 at replicas=1, so a new pod must schedule before
+  # the old one is allowed to terminate. On a resource-constrained single node the
+  # new pod stays Pending (no spare CPU/RAM), the old pod never terminates, and
+  # `kubectl rollout status` blocks until its timeout — the "old pods won't shut
+  # down / deploy hangs" failure. maxSurge:0 + maxUnavailable:1 frees the old pod's
+  # resources FIRST, then schedules the new one. Accepts brief downtime per service
+  # (fine here, not yet live); override per-service via the macro if needed.
+  strategy:
+    type: {{ .strategyType | default "RollingUpdate" }}
+    {{- if ne (.strategyType | default "RollingUpdate") "Recreate" }}
+    rollingUpdate:
+      maxSurge: {{ .maxSurge | default 0 }}
+      maxUnavailable: {{ .maxUnavailable | default 1 }}
+    {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/component: {{ .name }}
