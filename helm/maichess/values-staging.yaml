@@ -103,9 +103,9 @@ services:
     tag: nightly
     autoscaling:
       enabled: true
-      minReplicas: 1
-      maxReplicas: 20
-      targetCPU: 70
+      minReplicas: 2
+      maxReplicas: 40
+      targetCPU: 80
   databaseService:
     tag: nightly
   topologyService:
