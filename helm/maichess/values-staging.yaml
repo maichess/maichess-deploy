@@ -27,7 +27,7 @@ elasticsearch:
 minio:
   enabled: true
   # Staging shares maichess-mega's disk; keep the lake modest (sampled corpora).
-  storage: 100Gi
+  storage: 40Gi
 
 sparkOperator:
   enabled: true
