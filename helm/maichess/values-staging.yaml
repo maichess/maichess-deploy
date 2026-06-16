@@ -27,7 +27,7 @@ elasticsearch:
 minio:
   enabled: true
   # Staging shares maichess-mega's disk; keep the lake modest (sampled corpora).
-  storage: 40Gi
+  storage: 100Gi
 
 sparkOperator:
   enabled: true
@@ -104,7 +104,7 @@ services:
     autoscaling:
       enabled: true
       minReplicas: 1
-      maxReplicas: 3
+      maxReplicas: 20
       targetCPU: 70
   databaseService:
     tag: nightly
