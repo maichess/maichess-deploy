@@ -51,6 +51,9 @@ spec:
         app.kubernetes.io/component: {{ .name }}
         maichess.io/container-update: "true"
     spec:
+      {{- if .serviceAccountName }}
+      serviceAccountName: {{ .serviceAccountName }}
+      {{- end }}
       imagePullSecrets:
         - name: ghcr-pull-secret
       containers:

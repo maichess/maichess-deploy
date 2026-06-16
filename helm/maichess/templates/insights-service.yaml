@@ -1,0 +1,53 @@
+{{/*
+maichess-insights-service — the .NET control plane for the insights program (task 05).
+Accepts ingestion/analysis requests + manual PGN uploads, launches and tracks Spark jobs
+as SparkApplication CRDs (runs under the `insights-service` ServiceAccount, see
+templates/insights-rbac.yaml), and serves the job/corpus catalog from insights-db. Reads
+the materialized insights_* collections is task 06.
+
+Gated on services.insightsService.enabled (which implies insights.enabled for insights-db
+and sparkOperator.enabled for the RBAC/operator). Secret-backed config (JWT, Mongo
+connection, MinIO root creds) is injected here; the Spark-job parameters (image, compute
+node pin, priority class, namespace) come from the insights.* governance knobs so they
+stay in sync with the operator + RBAC templates.
+*/}}
+{{- if .Values.services.insightsService.enabled }}
+{{- $extra := list
+    (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
+    (dict "name" "Insights__MongoUri" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "mongo-connection-string")))
+    (dict "name" "Insights__Minio__AccessKey" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "minio-root-user")))
+    (dict "name" "Insights__Minio__SecretKey" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "minio-root-password")))
+    (dict "name" "Insights__MongoDb" "value" "maichess")
+    (dict "name" "Insights__Namespace" "value" .Release.Namespace)
+    (dict "name" "Insights__ComputeNodeHostname" "value" (.Values.insights.computeNodeHostname | toString))
+    (dict "name" "Insights__PriorityClassName" "value" (.Values.insights.spark.priorityClassName | default "insights-low-priority"))
+    (dict "name" "Insights__Image" "value" (printf "%s/maichess-insights-spark:%s" .Values.maichess.imageRegistry (.Values.insights.sparkImageTag | default "main"))) }}
+{{- if .Values.kafka.enabled }}
+{{- $extra = append $extra (dict "name" "Kafka__Enabled" "value" "true") }}
+{{- end }}
+{{ include "maichess.app.deployment" (dict
+  "name" "insights-service"
+  "image" (printf "%s/maichess-insights-service:%s" .Values.maichess.imageRegistry (.Values.services.insightsService.tag | default "main"))
+  "serviceAccountName" "insights-service"
+  "ports" (list
+    (dict "containerPort" 8080 "name" "http")
+    (dict "containerPort" 8081 "name" "grpc")
+  )
+  "env" .Values.services.insightsService.env
+  "extraEnv" $extra
+  "resources" (.Values.services.insightsService.resources | default dict)
+  "probePort" 8080
+  "Release" .Release
+  "Chart" .Chart
+  "Values" .Values
+) }}
+---
+{{ include "maichess.app.service" (dict
+  "name" "insights-service"
+  "ports" (list
+    (dict "port" 8080 "targetPort" 8080 "protocol" "TCP" "name" "http")
+    (dict "port" 8081 "targetPort" 8081 "protocol" "TCP" "name" "grpc")
+  )
+) }}
+{{- end }}
+</content>

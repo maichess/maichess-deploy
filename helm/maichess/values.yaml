@@ -346,10 +346,11 @@ services:
         value: "$(ENVIRONMENT)"
       - name: Services__InsightsDatabase
         value: "http://insights-db:8080"
-      - name: Services__EngineService
-        value: "http://engine-service:50056"
-      - name: Minio__Endpoint
-        value: "http://minio:9000"
+      # MinIO host:port (no scheme — the Minio SDK takes endpoint + UseSsl).
+      - name: Insights__Minio__Endpoint
+        value: "minio:9000"
+      - name: Insights__Minio__UseSsl
+        value: "false"
       - name: OTEL_SERVICE_NAME
         value: insights-service
 
