@@ -20,9 +20,10 @@ elasticsearch:
 
 # Insights data lake + Spark execution platform on in staging only (insights
 # program). MinIO + the Spark Operator (with its RBAC, PriorityClass + capped
-# ResourceQuota) come up here for validation; insights-db and the insights-service
-# stay off until the database-service "insights" migration set + the service image
-# exist (tasks 05/06), since insights-db crash-loops on an unknown migration.
+# ResourceQuota) come up here, plus insights-db and the insights-service: the
+# prerequisites now exist (database-service "insights" migration set on dev/nightly,
+# maichess-insights-service:nightly image), so the full insights program runs on
+# staging. insights-db reuses the nightly database-service image (has the migration).
 minio:
   enabled: true
   # Staging shares maichess-mega's disk; keep the lake modest (sampled corpora).
@@ -34,6 +35,12 @@ sparkOperator:
     # SparkApplications run in the staging namespace.
     jobNamespaces:
       - maichess-staging
+
+# Insights control plane: insights-db (catalog) + the Spark job image tag. The
+# insights-service deployment itself is gated on services.insightsService.enabled.
+insights:
+  enabled: true
+  sparkImageTag: nightly
 
 ingress:
   clientDomain: staging.maichess.berger-software.com
@@ -132,6 +139,9 @@ services:
     # backfill gate (and stall) every container update. Trigger a rebuild via the
     # Update Containers workflow's `reindex` input instead.
     reindex: false
+  insightsService:
+    enabled: true
+    tag: nightly
 
 # Note: staging database ephemeral storage not yet implemented
 # (custom StatefulSets always use PVCs; for staging, delete the namespace to reset)
