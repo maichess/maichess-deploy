@@ -83,6 +83,8 @@ services:
         value: "http://search-service:8080"
       - name: ANTICHEAT_SERVICE_URL
         value: "http://anticheat-service:8080"
+      - name: INSIGHTS_SERVICE_URL
+        value: "http://insights-service:8080"
 
   userService:
     tag: main
