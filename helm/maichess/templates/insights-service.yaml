@@ -50,4 +50,3 @@ stay in sync with the operator + RBAC templates.
   )
 ) }}
 {{- end }}
-</content>
