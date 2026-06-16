@@ -128,6 +128,12 @@ Use `--with-kafka` only if you also want to purge match/analysis **history** fro
 the Kafka log. Without it, the read models are wiped but the event log is retained
 (harmless — nothing surfaces it, and it expires via `retention.ms`).
 
+> **From CI:** the `update-containers.yml` workflow can run this for you. Setting
+> its `wipe_data` input runs `reset-data --with-kafka --yes` (with `--staging` for
+> the staging namespace) *after* the chart is deployed, so a deploy can hand back a
+> completely fresh environment. Wiping **production** additionally requires the
+> `confirm_prod_wipe` input to equal `WIPE-PROD-DATA`.
+
 ### `reset-kafka` — reset the event log only (advanced)
 
 ```bash

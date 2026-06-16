@@ -14,11 +14,29 @@ on:
           - staging
       reindex:
         description: >-
-          Rebuild the Elasticsearch search index. Runs the blocking
-          search-reindex hook; leave off for routine tag updates.
+          Rebuild the Elasticsearch search index. Launches the rebuild as a
+          DETACHED background Job after the rollout (the pipeline does NOT wait
+          for it to finish); leave off for routine tag updates.
         required: false
         default: false
         type: boolean
+      wipe_data:
+        description: >-
+          DESTRUCTIVE — wipe ALL stateful data for a completely fresh
+          environment (drops every Mongo collection, FLUSHALL Redis, resets the
+          Kafka app topics, drops + rebuilds the Elasticsearch indexes) AFTER the
+          chart is deployed. Intended for staging. To wipe prod you MUST also set
+          confirm_prod_wipe (see below); otherwise prod is never touched.
+        required: false
+        default: false
+        type: boolean
+      confirm_prod_wipe:
+        description: >-
+          Prod safety interlock. wipe_data only affects PRODUCTION when this is
+          set to exactly WIPE-PROD-DATA. Leave blank for staging-only wipes.
+        required: false
+        default: ""
+        type: string
 
 jobs:
   update:
@@ -85,13 +103,53 @@ jobs:
             # Those are install-time concerns owned by helm/scripts/deploy-*.sh
             # (run with --wait + hooks). Here --no-hooks keeps tag rollouts fast
             # and reliable; the rollout status below is the single readiness gate.
-            # The `reindex` input re-enables hooks for a deliberate ES rebuild.
             HOOK_ARGS="--no-hooks"
-            REINDEX_ARGS=""
-            if [[ "${{ inputs.reindex }}" == "true" ]]; then
-              HOOK_ARGS=""
-              REINDEX_ARGS="--set services.searchService.reindex=true"
+
+            # ES reindex is requested via the `reindex` input. We deliberately do
+            # NOT enable the blocking search-reindex helm hook (a full rebuild
+            # overruns `helm --timeout` and fails the pipeline). Instead we deploy
+            # with --no-hooks and, after the rollout, launch the rebuild as a
+            # DETACHED Job via maintenance.sh — it keeps running after the
+            # pipeline returns. See reindex_env() below.
+            REINDEX="${{ inputs.reindex }}"
+
+            # --- Data-wipe toggle -------------------------------------------
+            # When wipe_data=true, reuse the supported operator tool
+            # (helm/scripts/maintenance.sh reset-data) to clear every store so the
+            # environment comes up on a clean slate. It is run AFTER the chart is
+            # deployed, so the freshly rolled-out images initialise against empty
+            # stores. The full wipe covers Mongo + Redis + Kafka + Elasticsearch.
+            WIPE_DATA="${{ inputs.wipe_data }}"
+            WIPE_PROD=0
+            if [[ "$WIPE_DATA" == "true" ]]; then
+              # Hard interlock: production data is only wiped with an explicit
+              # typed confirmation, even when environment is "prod" or "both".
+              if [[ "${{ inputs.confirm_prod_wipe }}" == "WIPE-PROD-DATA" ]]; then
+                WIPE_PROD=1
+              fi
+              if [[ ( "${{ inputs.environment }}" == "prod" || "${{ inputs.environment }}" == "both" ) && "$WIPE_PROD" -ne 1 ]]; then
+                echo "Refusing to wipe PRODUCTION data: set confirm_prod_wipe=WIPE-PROD-DATA to allow it."
+                echo "(Staging will still be wiped if it is part of this run.)"
+              fi
             fi
+
+            # wipe_env <human-label> [maintenance.sh namespace flags...]
+            # A full reset also drops + rebuilds the (now empty) ES indexes, so it
+            # completes near-instantly and subsumes any reindex for that env.
+            wipe_env() {
+              local label="$1"; shift
+              echo "=== WIPING ALL DATA ($label): Mongo + Redis + Kafka + Elasticsearch ==="
+              bash ./helm/scripts/maintenance.sh reset-data --with-kafka --yes "$@"
+            }
+
+            # reindex_env <human-label> [maintenance.sh namespace flags...]
+            # Drops the ES indexes and launches a DETACHED rebuild Job (no --wait),
+            # so the rebuild outlives this pipeline instead of stalling it.
+            reindex_env() {
+              local label="$1"; shift
+              echo "=== Launching DETACHED Elasticsearch rebuild ($label) ==="
+              bash ./helm/scripts/maintenance.sh rebuild-search "$@"
+            }
 
             deploy_env() {
               local release="$1" namespace="$2" values="$3" secrets="$4"
@@ -103,7 +161,7 @@ jobs:
                 -f ./helm/maichess/values.yaml \
                 -f "$values" \
                 -f "$secrets" \
-                $HOOK_ARGS $REINDEX_ARGS \
+                $HOOK_ARGS \
                 --timeout 10m
               echo "=== rollout restart + status ($namespace) ==="
               kubectl rollout restart deployment -n "$namespace" -l "$restart_selector"
@@ -128,6 +186,11 @@ jobs:
               git checkout main
               git pull origin main
               deploy_env maichess maichess ./helm/maichess/values-prod.yaml /etc/maichess/values-secrets-prod.yaml
+              if [[ "$WIPE_DATA" == "true" && "$WIPE_PROD" -eq 1 ]]; then
+                wipe_env production   # default namespace is maichess (prod); rebuilds ES too
+              elif [[ "$REINDEX" == "true" ]]; then
+                reindex_env production
+              fi
             fi
 
             if [[ "${{ inputs.environment }}" == "staging" || "${{ inputs.environment }}" == "both" ]]; then
@@ -135,6 +198,11 @@ jobs:
               git checkout dev
               git pull origin dev
               deploy_env maichess-staging maichess-staging ./helm/maichess/values-staging.yaml /etc/maichess/values-secrets-staging.yaml
+              if [[ "$WIPE_DATA" == "true" ]]; then
+                wipe_env staging --staging   # rebuilds ES too
+              elif [[ "$REINDEX" == "true" ]]; then
+                reindex_env staging --staging
+              fi
             fi
 
             # Leave the working copy on main so the auto-deploy workflow is consistent.
