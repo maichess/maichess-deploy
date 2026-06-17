@@ -15,6 +15,7 @@ stay in sync with the operator + RBAC templates.
 {{- $extra := list
     (dict "name" "Jwt__Key" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "jwt-secret")))
     (dict "name" "Insights__MongoUri" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "mongo-connection-string")))
+    (dict "name" "ConnectionStrings__Redis" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "redis-connection-string")))
     (dict "name" "Insights__Minio__AccessKey" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "minio-root-user")))
     (dict "name" "Insights__Minio__SecretKey" "valueFrom" (dict "secretKeyRef" (dict "name" "maichess-app-secrets" "key" "minio-root-password")))
     (dict "name" "Insights__MongoDb" "value" "maichess")
